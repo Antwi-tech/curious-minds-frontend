@@ -23,9 +23,21 @@ function PasswordField({ value, onChange, label, error, placeholder }) {
 
 export function RegisterCompany() {
   const navigate = useNavigate()
-  const [form, setForm] = useState({ name: '', industry: '', email: '', phone: '', city: '', region: '', password: '', confirm: '' })
+  const [form, setForm] = useState({
+    company_name: '',
+    industry_type: '',
+    email: '',
+    phone_number: '',
+    company_address: '',
+    region: '',
+    contact_person: '',
+    description: '',
+    password: '',
+    confirm: ''
+  })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
+  const [serverError, setServerError] = useState('')
 
   const industries = ['Banking & Finance', 'Telecommunications', 'Manufacturing / FMCG', 'Information Technology', 'Healthcare', 'Media & Communications', 'Oil & Gas', 'Education', 'Retail & Commerce', 'Agriculture', 'Construction', 'Hospitality & Tourism', 'NGO / Civil Society', 'Government / Public Sector']
 
@@ -33,25 +45,50 @@ export function RegisterCompany() {
 
   const validate = () => {
     const e = {}
-    if (!form.name) e.name = 'Company name is required'
-    if (!form.industry) e.industry = 'Please select an industry'
+    if (!form.company_name) e.company_name = 'Company name is required'
+    if (!form.industry_type) e.industry_type = 'Please select an industry'
     if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Valid email required'
-    if (!form.phone) e.phone = 'Phone is required'
-    if (!form.city) e.city = 'City is required'
+    if (!form.phone_number) e.phone_number = 'Phone is required'
+    if (!form.company_address) e.company_address = 'Address is required'
     if (!form.region) e.region = 'Region is required'
+    if (!form.contact_person) e.contact_person = 'Contact person is required'
+    if (!form.description) e.description = 'Description is required'
     if (form.password.length < 8) e.password = 'At least 8 characters'
     if (form.password !== form.confirm) e.confirm = 'Passwords do not match'
     return e
   }
 
-  const handleSubmit = (ev) => {
+  const handleSubmit = async (ev) => {
     ev.preventDefault()
+    setServerError('')
     const e = validate()
     setErrors(e)
     if (Object.keys(e).length > 0) return
     setLoading(true)
-    // TODO: POST /api/auth/register/company
-    setTimeout(() => { setLoading(false); navigate('/pending-approval') }, 1200)
+    try {
+      // TODO: POST /company/register
+      const { registerCompany } = await import('../../api')
+      await registerCompany({
+        company_name: form.company_name,
+        email: form.email,
+        password: form.password,
+        contact_person: form.contact_person,
+        phone_number: form.phone_number,
+        company_address: form.company_address,
+        region: form.region,
+        description: form.description,
+        industry_type: form.industry_type,
+      })
+      navigate('/pending-approval')
+    } catch (err) {
+      if (err.response?.data?.error) {
+        setServerError(err.response.data.error)
+      } else {
+        setServerError('Something went wrong. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -70,35 +107,48 @@ export function RegisterCompany() {
             <p className="text-text-secondary mt-2">Join CuriousMinds and connect with Ghana's top schools.</p>
           </div>
 
+          {serverError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center">
+              {serverError}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="card p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="md:col-span-2">
                 <label className="label">Company Name</label>
-                <input value={form.name} onChange={set('name')} placeholder="e.g. Ecobank Ghana" className={`input-field ${errors.name ? 'border-red-300' : ''}`} />
-                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+                <input value={form.company_name} onChange={set('company_name')} placeholder="e.g. Ecobank Ghana" className={`input-field ${errors.company_name ? 'border-red-300' : ''}`} />
+                {errors.company_name && <p className="text-xs text-red-500 mt-1">{errors.company_name}</p>}
               </div>
               <div className="md:col-span-2">
                 <label className="label">Industry / Sector</label>
-                <select value={form.industry} onChange={set('industry')} className={`input-field ${errors.industry ? 'border-red-300' : ''}`}>
+                <select value={form.industry_type} onChange={set('industry_type')} className={`input-field ${errors.industry_type ? 'border-red-300' : ''}`}>
                   <option value="">Select an industry...</option>
                   {industries.map(i => <option key={i} value={i}>{i}</option>)}
                 </select>
-                {errors.industry && <p className="text-xs text-red-500 mt-1">{errors.industry}</p>}
+                {errors.industry_type && <p className="text-xs text-red-500 mt-1">{errors.industry_type}</p>}
               </div>
+              <div className="md:col-span-2">
+                <label className="label">Contact Person</label>
+                <input value={form.contact_person} onChange={set('contact_person')} placeholder="e.g. Kwame Mensah" className={`input-field ${errors.contact_person ? 'border-red-300' : ''}`} />
+                {errors.contact_person && <p className="text-xs text-red-500 mt-1">{errors.contact_person}</p>}
+              </div>
+
               <div>
                 <label className="label">Email Address</label>
                 <input type="email" value={form.email} onChange={set('email')} placeholder="hr@company.com.gh" className={`input-field ${errors.email ? 'border-red-300' : ''}`} />
                 {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
               </div>
+              
               <div>
                 <label className="label">Phone Number</label>
-                <input value={form.phone} onChange={set('phone')} placeholder="+233 24 000 0000" className={`input-field ${errors.phone ? 'border-red-300' : ''}`} />
-                {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                <input value={form.phone_number} onChange={set('phone_number')} placeholder="+233 24 000 0000" className={`input-field ${errors.phone_number ? 'border-red-300' : ''}`} />
+                {errors.phone_number && <p className="text-xs text-red-500 mt-1">{errors.phone_number}</p>}
               </div>
               <div>
-                <label className="label">City</label>
-                <input value={form.city} onChange={set('city')} placeholder="e.g. Accra" className={`input-field ${errors.city ? 'border-red-300' : ''}`} />
-                {errors.city && <p className="text-xs text-red-500 mt-1">{errors.city}</p>}
+                <label className="label">Company Address</label>
+                <input value={form.company_address} onChange={set('company_address')} placeholder="e.g. 123 Independence Ave, Accra" className={`input-field ${errors.company_address ? 'border-red-300' : ''}`} />
+                {errors.company_address && <p className="text-xs text-red-500 mt-1">{errors.company_address}</p>}
               </div>
               <div>
                 <label className="label">Region</label>
@@ -107,6 +157,23 @@ export function RegisterCompany() {
                   {ghanaRegions.map(r => <option key={r}>{r}</option>)}
                 </select>
                 {errors.region && <p className="text-xs text-red-500 mt-1">{errors.region}</p>}
+              </div>
+            
+
+              {/* <div className="md:col-span-2">
+                <label className="label">Company Description</label>
+                <textarea value={form.description} onChange={set('description')} rows={3} placeholder="Briefly describe what your company does and what interns can expect..." className={`input-field resize-none ${errors.description ? 'border-red-300' : ''}`} />
+                {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
+              </div> */}
+              <div className="md:col-span-2">
+                <label className="label">Website <span className="text-text-secondary font-normal">(optional)</span></label>
+                <input value={form.website} onChange={set('website')} placeholder="e.g. https://yourcompany.com.gh" className="input-field" />
+              </div>
+              
+              <div className="md:col-span-2">
+                <label className="label">Company Description</label>
+                <textarea value={form.description} onChange={set('description')} rows={3} placeholder="Briefly describe what your company does and what interns can expect..." className={`input-field resize-none ${errors.description ? 'border-red-300' : ''}`} />
+                {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
               </div>
               <PasswordField value={form.password} onChange={set('password')} label="Password" error={errors.password} />
               <PasswordField value={form.confirm} onChange={set('confirm')} label="Confirm Password" error={errors.confirm} />
@@ -126,7 +193,6 @@ export function RegisterCompany() {
     </div>
   )
 }
-
 export function RegisterSchool() {
   const navigate = useNavigate()
   const [form, setForm] = useState({ name: '', type: '', email: '', phone: '', district: '', region: '', password: '', confirm: '' })
