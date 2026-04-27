@@ -1,104 +1,104 @@
-import { useState } from "react";
-import { Building2, Mail, Phone, MapPin, FileText, CheckCircle, ChevronDown } from "lucide-react";
-import { CompanyLayout, FormField, Toast } from "../../components/shared";
-import { ghanaRegions, industries } from "../../data/mockData";
+import React, { useState, useEffect } from 'react'
+import { DashboardLayout, StatusBadge, Toast } from '../../components/Shared'
+import { ghanaRegions } from '../../data/mockData'
+import { getCompanyProfile } from '../../api'
+import { getStoredUser } from './companyHelpers'
 
 export default function CompanyProfile() {
-  const [toast, setToast] = useState(null);
-  const [form, setForm] = useState({
-    name: "Scancom Ghana (MTN)", industry: "Telecommunications",
-    email: "internships@mtn.com.gh", phone: "+233 24 200 0000",
-    city: "Accra", region: "Greater Accra",
-    about: "MTN Ghana is the country's leading telecommunications provider, offering voice, data, and fintech solutions to over 25 million subscribers. We are passionate about developing Ghana's digital economy and nurturing young talent."
-  });
-  const set = k => e => setForm({ ...form, [k]: e.target.value });
+  const [form, setForm] = useState({})
+  const [toast, setToast] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
 
-  const handleSubmit = e => {
-    e.preventDefault();
-    // TODO: replace with API call PATCH /api/companies/me
-    setToast({ message: "Profile updated successfully!", type: "success" });
-  };
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await getCompanyProfile()
+        setForm(res.data)
+      } catch {
+        setToast({ message: 'Failed to load profile', type: 'error' })
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchProfile()
+  }, [])
+
+  const handleSave = async () => {
+    setSaving(true)
+    // TODO: PATCH /company/profile
+    setTimeout(() => {
+      setSaving(false)
+      setToast({ message: 'Profile updated successfully!', type: 'success' })
+    }, 800)
+  }
+
+  if (loading) return (
+    <DashboardLayout role="company" userName="..." title="My Profile">
+      <div className="text-center py-16 text-text-secondary text-sm">Loading...</div>
+    </DashboardLayout>
+  )
 
   return (
-    <CompanyLayout title="My Profile">
-      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
-      <div className="max-w-3xl">
-        {/* Verification badge */}
-        <div className="card mb-6 flex items-center gap-4">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center flex-shrink-0">
-            <Building2 size={24} className="text-white" />
+    <DashboardLayout role="company" userName={form.company_name || 'Company'} title="My Profile">
+      <div className="max-w-2xl">
+        <div className="card p-6 mb-6 flex items-center gap-5">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-display text-2xl font-bold">
+            {(form.company_name || 'C').charAt(0)}
           </div>
-          <div className="flex-1">
-            <h2 className="font-display font-bold text-text-primary text-xl">{form.name}</h2>
-            <p className="text-text-secondary text-sm">{form.industry} • {form.city}, {form.region}</p>
-          </div>
-          <div className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-sm font-semibold">
-            <CheckCircle size={14} /> Verified
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="font-display text-xl font-bold text-text-primary">{form.company_name}</h2>
+              <StatusBadge status={form.is_verified ? 'verified' : 'pending'} />
+            </div>
+            <p className="text-text-secondary text-sm mt-0.5">{form.industry_type}</p>
           </div>
         </div>
-
-        <div className="card">
-          <h3 className="font-display font-bold text-text-primary text-lg mb-6">Edit Profile</h3>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid sm:grid-cols-2 gap-5">
-              <FormField label="Company Name">
-                <div className="relative">
-                  <Building2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
-                  <input type="text" value={form.name} onChange={set("name")} className="input-field pl-9" />
-                </div>
-              </FormField>
-              <FormField label="Industry / Sector">
-                <div className="relative">
-                  <select value={form.industry} onChange={set("industry")} className="input-field appearance-none">
-                    {industries.map(i => <option key={i}>{i}</option>)}
-                  </select>
-                  <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-                </div>
-              </FormField>
+        <div className="card p-8">
+          <h3 className="section-title text-base mb-6">Company Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="md:col-span-2">
+              <label className="label">Company Name</label>
+              <input value={form.company_name || ''} onChange={set('company_name')} className="input-field" />
             </div>
-            <div className="grid sm:grid-cols-2 gap-5">
-              <FormField label="Email Address">
-                <div className="relative">
-                  <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
-                  <input type="email" value={form.email} onChange={set("email")} className="input-field pl-9" />
-                </div>
-              </FormField>
-              <FormField label="Phone Number">
-                <div className="relative">
-                  <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
-                  <input type="tel" value={form.phone} onChange={set("phone")} className="input-field pl-9" />
-                </div>
-              </FormField>
+            <div className="md:col-span-2">
+              <label className="label">Industry</label>
+              <input value={form.industry_type || ''} onChange={set('industry_type')} className="input-field" />
             </div>
-            <div className="grid sm:grid-cols-2 gap-5">
-              <FormField label="City">
-                <div className="relative">
-                  <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
-                  <input type="text" value={form.city} onChange={set("city")} className="input-field pl-9" />
-                </div>
-              </FormField>
-              <FormField label="Region">
-                <div className="relative">
-                  <select value={form.region} onChange={set("region")} className="input-field appearance-none">
-                    {ghanaRegions.map(r => <option key={r}>{r}</option>)}
-                  </select>
-                  <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-                </div>
-              </FormField>
+            <div>
+              <label className="label">Email Address</label>
+              <input value={form.email || ''} onChange={set('email')} className="input-field" />
             </div>
-            <FormField label="About / Description">
-              <div className="relative">
-                <FileText size={15} className="absolute left-3.5 top-3.5 text-text-secondary" />
-                <textarea value={form.about} onChange={set("about")} rows={4}
-                  className="input-field pl-9 resize-none" placeholder="Tell schools about your company..." />
-              </div>
-            </FormField>
-            <div className="flex justify-end pt-2">
-              <button type="submit" className="btn-primary">Save Changes</button>
+            <div>
+              <label className="label">Phone Number</label>
+              <input value={form.phone_number || ''} onChange={set('phone_number')} className="input-field" />
             </div>
-          </form>
+            <div>
+              <label className="label">Company Address</label>
+              <input value={form.company_address || ''} onChange={set('company_address')} className="input-field" />
+            </div>
+            <div>
+              <label className="label">Region</label>
+              <select value={form.region || ''} onChange={set('region')} className="input-field">
+                {ghanaRegions.map(r => <option key={r}>{r}</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="label">About / Description</label>
+              <textarea value={form.description || ''} onChange={set('description')} rows={4} className="input-field resize-none" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="label">Website <span className="text-text-secondary font-normal">(optional)</span></label>
+              <input value={form.website || ''} onChange={set('website')} className="input-field" />
+            </div>
+          </div>
+          <button onClick={handleSave} disabled={saving} className="btn-secondary mt-6 disabled:opacity-60">
+            {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Save Changes'}
+          </button>
         </div>
       </div>
-    </CompanyLayout>
-  );
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    </DashboardLayout>
+  )
 }

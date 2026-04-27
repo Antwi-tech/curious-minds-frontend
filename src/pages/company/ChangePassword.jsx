@@ -1,66 +1,85 @@
-import { useState } from "react";
-import { Lock, Eye, EyeOff } from "lucide-react";
-import { CompanyLayout, FormField, Toast } from "../../components/shared";
+import React, { useState } from 'react'
+import { DashboardLayout, Toast } from '../../components/Shared'
+import { Lock, Eye, EyeOff } from 'lucide-react'
+import { changeCompanyPassword } from '../../api'
+import { getStoredUser } from './companyHelpers'
 
-export default function CompanyChangePassword() {
-  const [show, setShow] = useState({ current: false, new: false, confirm: false });
-  const [form, setForm] = useState({ current: "", newPw: "", confirm: "" });
-  const [errors, setErrors] = useState({});
-  const [toast, setToast] = useState(null);
-  const set = k => e => setForm({ ...form, [k]: e.target.value });
-  const toggle = k => () => setShow({ ...show, [k]: !show[k] });
+export default function ChangePassword({ role = 'company' }) {
+  const user = getStoredUser()
+  const userName = user.company_name || user.school_name || 'User'
+  const [form, setForm] = useState({ current: '', newPw: '', confirm: '' })
+  const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
+  const [toast, setToast] = useState(null)
+  const [showFields, setShowFields] = useState({ current: false, newPw: false, confirm: false })
+  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  const toggleShow = k => () => setShowFields(p => ({ ...p, [k]: !p[k] }))
 
   const validate = () => {
-    const e = {};
-    if (!form.current) e.current = "Current password required";
-    if (!form.newPw || form.newPw.length < 8) e.newPw = "Minimum 8 characters";
-    if (form.newPw !== form.confirm) e.confirm = "Passwords do not match";
-    return e;
-  };
+    const e = {}
+    if (!form.current) e.current = 'Current password is required'
+    if (form.newPw.length < 8) e.newPw = 'At least 8 characters'
+    if (form.newPw !== form.confirm) e.confirm = 'Passwords do not match'
+    return e
+  }
 
-  const handleSubmit = ev => {
-    ev.preventDefault();
-    const e = validate();
-    if (Object.keys(e).length) { setErrors(e); return; }
-    // TODO: replace with API call PATCH /api/companies/me/password
-    setToast({ message: "Password changed successfully!", type: "success" });
-    setForm({ current: "", newPw: "", confirm: "" });
-    setErrors({});
-  };
+  const handleSubmit = async (ev) => {
+    ev.preventDefault()
+    const e = validate()
+    setErrors(e)
+    if (Object.keys(e).length > 0) return
+    setLoading(true)
+    try {
+      await changeCompanyPassword(user.company_id, {
+        old_password: form.current,
+        new_password: form.newPw
+      })
+      setForm({ current: '', newPw: '', confirm: '' })
+      setToast({ message: 'Password changed successfully!', type: 'success' })
+    } catch {
+      setToast({ message: 'Failed to change password. Check current password.', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const PwField = ({ name, label, field, err }) => (
-    <FormField label={label} error={err}>
-      <div className="relative">
-        <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
-        <input type={show[name] ? "text" : "password"} value={form[field]} onChange={set(field)}
-          className={`input-field pl-9 pr-10 ${err ? "border-red-400" : ""}`} placeholder="••••••••" />
-        <button type="button" onClick={toggle(name)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary">
-          {show[name] ? <EyeOff size={15} /> : <Eye size={15} />}
-        </button>
-      </div>
-    </FormField>
-  );
+  const fields = [
+    { key: 'current', label: 'Current Password' },
+    { key: 'newPw', label: 'New Password', hint: 'Minimum 8 characters' },
+    { key: 'confirm', label: 'Confirm New Password' },
+  ]
 
   return (
-    <CompanyLayout title="Settings">
-      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    <DashboardLayout role={role} userName={userName} title="Change Password">
       <div className="max-w-md">
-        <div className="card">
-          <h3 className="font-display font-bold text-text-primary text-xl mb-6">Change Password</h3>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <PwField name="current" label="Current Password" field="current" err={errors.current} />
-            <div className="border-t border-gray-100 pt-5">
-              <PwField name="new" label="New Password" field="newPw" err={errors.newPw} />
-              <div className="mt-5">
-                <PwField name="confirm" label="Confirm New Password" field="confirm" err={errors.confirm} />
+        <div className="card p-8">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
+            <Lock size={24} className="text-primary" />
+          </div>
+          <h2 className="font-display text-xl font-bold text-text-primary mb-1">Update your password</h2>
+          <p className="text-text-secondary text-sm mb-6">For your security, choose a strong, unique password.</p>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            {fields.map(({ key, label, hint }) => (
+              <div key={key}>
+                <label className="label">{label}</label>
+                <div className="relative">
+                  <input type={showFields[key] ? 'text' : 'password'} value={form[key]} onChange={set(key)}
+                    placeholder="••••••••" className={`input-field pr-12 ${errors[key] ? 'border-red-300' : ''}`} />
+                  <button type="button" onClick={toggleShow(key)} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary">
+                    {showFields[key] ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {hint && <p className="text-xs text-text-secondary mt-1">{hint}</p>}
+                {errors[key] && <p className="text-xs text-red-500 mt-1">{errors[key]}</p>}
               </div>
-            </div>
-            <div className="flex justify-end pt-2">
-              <button type="submit" className="btn-primary">Save New Password</button>
-            </div>
+            ))}
+            <button type="submit" disabled={loading} className="btn-secondary justify-center mt-2 disabled:opacity-60">
+              {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Save New Password'}
+            </button>
           </form>
         </div>
       </div>
-    </CompanyLayout>
-  );
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    </DashboardLayout>
+  )
 }

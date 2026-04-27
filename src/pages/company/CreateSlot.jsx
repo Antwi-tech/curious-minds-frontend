@@ -1,107 +1,84 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ChevronDown, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
-import { CompanyLayout, FormField, Toast } from "../../components/shared";
-import { fields } from "../../data/mockData";
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { DashboardLayout, Toast } from '../../components/Shared'
+import { Plus } from 'lucide-react'
+import { createCompanySlot } from '../../api'
+import { getStoredUser } from './companyHelpers'
 
 export default function CreateSlot() {
-  const navigate = useNavigate();
-  const [toast, setToast] = useState(null);
-  const [form, setForm] = useState({
-    title: "", field: "", date: "", startTime: "", endTime: "",
-    maxStudents: "", requirements: "", description: ""
-  });
-  const [errors, setErrors] = useState({});
-  const set = k => e => setForm({ ...form, [k]: e.target.value });
+  const navigate = useNavigate()
+  const user = getStoredUser()
+  const [form, setForm] = useState({ start_date: '', start_time: '', end_date: '', end_time: '' })
+  const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
+  const [toast, setToast] = useState(null)
+  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
 
   const validate = () => {
-    const e = {};
-    if (!form.title) e.title = "Title is required";
-    if (!form.field) e.field = "Field/Department is required";
-    if (!form.date) e.date = "Date is required";
-    if (!form.startTime) e.startTime = "Start time required";
-    if (!form.endTime) e.endTime = "End time required";
-    if (!form.maxStudents || isNaN(form.maxStudents) || +form.maxStudents < 1) e.maxStudents = "Enter a valid number";
-    if (!form.description) e.description = "Description is required";
-    return e;
-  };
+    const e = {}
+    if (!form.start_date) e.start_date = 'Start date is required'
+    if (!form.start_time) e.start_time = 'Start time is required'
+    if (!form.end_date) e.end_date = 'End date is required'
+    if (!form.end_time) e.end_time = 'End time is required'
+    return e
+  }
 
-  const handleSubmit = e => {
-    e.preventDefault();
-    const e2 = validate();
-    if (Object.keys(e2).length) { setErrors(e2); return; }
-    // TODO: replace with API call POST /api/slots
-    setToast({ message: "Internship slot created!", type: "success" });
-    setTimeout(() => navigate("/company/slots"), 1500);
-  };
+  const handleSubmit = async (ev) => {
+    ev.preventDefault()
+    const e = validate()
+    setErrors(e)
+    if (Object.keys(e).length > 0) return
+    setLoading(true)
+    try {
+      await createCompanySlot({
+        start_date: `${form.start_date}T${form.start_time}:00`,
+        end_date: `${form.end_date}T${form.end_time}:00`,
+      })
+      navigate('/company/slots')
+    } catch (err) {
+      setToast({ message: err.response?.data?.error || 'Failed to create slot', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <CompanyLayout title="Create Internship Slot">
-      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    <DashboardLayout role="company" userName={user.company_name || 'Company'} title="Create Internship Slot">
       <div className="max-w-2xl">
-        <Link to="/company/slots" className="inline-flex items-center gap-2 text-text-secondary hover:text-primary text-sm font-semibold mb-6 transition-colors">
-          <ArrowLeft size={16} /> Back to Slots
-        </Link>
-        <div className="card">
-          <h3 className="font-display font-bold text-text-primary text-xl mb-6">New Internship Slot</h3>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <FormField label="Slot Title" error={errors.title}>
-              <input type="text" placeholder="e.g. Software Engineering Internship" value={form.title}
-                onChange={set("title")} className={`input-field ${errors.title ? "border-red-400" : ""}`} />
-            </FormField>
-
-            <div className="grid sm:grid-cols-2 gap-5">
-              <FormField label="Department / Field" error={errors.field}>
-                <div className="relative">
-                  <select value={form.field} onChange={set("field")}
-                    className={`input-field appearance-none ${errors.field ? "border-red-400" : ""}`}>
-                    <option value="">Select field</option>
-                    {fields.map(f => <option key={f}>{f}</option>)}
-                  </select>
-                  <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-                </div>
-              </FormField>
-
-              <FormField label="Date" error={errors.date}>
-                <input type="date" value={form.date} onChange={set("date")}
-                  className={`input-field ${errors.date ? "border-red-400" : ""}`} />
-              </FormField>
+        <form onSubmit={handleSubmit} className="card p-8">
+          <div className="flex flex-col gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Start Date</label>
+                <input type="date" value={form.start_date} onChange={set('start_date')} className={`input-field ${errors.start_date ? 'border-red-300' : ''}`} />
+                {errors.start_date && <p className="text-xs text-red-500 mt-1">{errors.start_date}</p>}
+              </div>
+              <div>
+                <label className="label">Start Time</label>
+                <input type="time" value={form.start_time} onChange={set('start_time')} className={`input-field ${errors.start_time ? 'border-red-300' : ''}`} />
+                {errors.start_time && <p className="text-xs text-red-500 mt-1">{errors.start_time}</p>}
+              </div>
+              <div>
+                <label className="label">End Date</label>
+                <input type="date" value={form.end_date} onChange={set('end_date')} className={`input-field ${errors.end_date ? 'border-red-300' : ''}`} />
+                {errors.end_date && <p className="text-xs text-red-500 mt-1">{errors.end_date}</p>}
+              </div>
+              <div>
+                <label className="label">End Time</label>
+                <input type="time" value={form.end_time} onChange={set('end_time')} className={`input-field ${errors.end_time ? 'border-red-300' : ''}`} />
+                {errors.end_time && <p className="text-xs text-red-500 mt-1">{errors.end_time}</p>}
+              </div>
             </div>
-
-            <div className="grid sm:grid-cols-3 gap-5">
-              <FormField label="Start Time" error={errors.startTime}>
-                <input type="time" value={form.startTime} onChange={set("startTime")}
-                  className={`input-field ${errors.startTime ? "border-red-400" : ""}`} />
-              </FormField>
-              <FormField label="End Time" error={errors.endTime}>
-                <input type="time" value={form.endTime} onChange={set("endTime")}
-                  className={`input-field ${errors.endTime ? "border-red-400" : ""}`} />
-              </FormField>
-              <FormField label="Max. Students" error={errors.maxStudents}>
-                <input type="number" min="1" placeholder="e.g. 10" value={form.maxStudents}
-                  onChange={set("maxStudents")} className={`input-field ${errors.maxStudents ? "border-red-400" : ""}`} />
-              </FormField>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => navigate('/company/slots')} className="btn-outline flex-1 justify-center">Cancel</button>
+              <button type="submit" disabled={loading} className="btn-secondary flex-1 justify-center disabled:opacity-60">
+                {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Plus size={16} /> Create Slot</>}
+              </button>
             </div>
-
-            <FormField label="Slot Description" error={errors.description}>
-              <textarea rows={4} value={form.description} onChange={set("description")}
-                placeholder="Describe what students will learn and experience during the internship..."
-                className={`input-field resize-none ${errors.description ? "border-red-400" : ""}`} />
-            </FormField>
-
-            <FormField label="Special Requirements (Optional)">
-              <input type="text" placeholder="e.g. Basic programming knowledge, Interest in finance..." value={form.requirements}
-                onChange={set("requirements")} className="input-field" />
-            </FormField>
-
-            <div className="flex gap-3 justify-end pt-2">
-              <Link to="/company/slots" className="btn-outline">Cancel</Link>
-              <button type="submit" className="btn-accent">Create Slot</button>
-            </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
-    </CompanyLayout>
-  );
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    </DashboardLayout>
+  )
 }
