@@ -66,6 +66,15 @@ export const adminGetAllBookings = () => API.get('/admin/bookings');
 export const adminCancelBooking = (id) => API.patch(`/admin/bookings/${id}/cancel`);
 export const adminGetAvailableTimes = () => API.get('/admin/available_times');
 
+// ─── COMPANY - SLOTS & BOOKINGS ───────────────────────────────────────
+export const getCompanyProfile = () => API.get('/company/profile');
+export const getCompanySlots = () => API.get('/company/slots');
+export const createCompanySlot = (data) => API.post('/company/slots', data);
+export const deleteCompanySlot = (id) => API.delete(`/company/slots/${id}`);
+export const getCompanyBookings = () => API.get('/company/bookings');
+export const approveBooking = (id) => API.patch(`/company/bookings/${id}/approve`);
+export const rejectBooking = (id) => API.patch(`/company/bookings/${id}/reject`);
+
 export default API;
 
 
