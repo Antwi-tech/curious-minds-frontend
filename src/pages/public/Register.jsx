@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Logo, KenteDivider } from '../../components/Shared'
-import { ghanaRegions, departments } from '../../data/mockData'
+import { Logo } from '../../components/Shared'
+import { ghanaRegions } from '../../data/mockData'
 import { Eye, EyeOff, ArrowRight, Building2 } from 'lucide-react'
+import { registerCompany, registerSchool } from '../../api'
 
 function PasswordField({ value, onChange, label, error, placeholder }) {
   const [show, setShow] = useState(false)
@@ -32,6 +33,7 @@ export function RegisterCompany() {
     region: '',
     contact_person: '',
     description: '',
+    website: '',
     password: '',
     confirm: ''
   })
@@ -66,8 +68,6 @@ export function RegisterCompany() {
     if (Object.keys(e).length > 0) return
     setLoading(true)
     try {
-      // TODO: POST /company/register
-      const { registerCompany } = await import('../../api')
       await registerCompany({
         company_name: form.company_name,
         email: form.email,
@@ -78,6 +78,7 @@ export function RegisterCompany() {
         region: form.region,
         description: form.description,
         industry_type: form.industry_type,
+        website: form.website || undefined,
       })
       navigate('/pending-approval')
     } catch (err) {
@@ -133,13 +134,11 @@ export function RegisterCompany() {
                 <input value={form.contact_person} onChange={set('contact_person')} placeholder="e.g. Kwame Mensah" className={`input-field ${errors.contact_person ? 'border-red-300' : ''}`} />
                 {errors.contact_person && <p className="text-xs text-red-500 mt-1">{errors.contact_person}</p>}
               </div>
-
               <div>
                 <label className="label">Email Address</label>
                 <input type="email" value={form.email} onChange={set('email')} placeholder="hr@company.com.gh" className={`input-field ${errors.email ? 'border-red-300' : ''}`} />
                 {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
               </div>
-              
               <div>
                 <label className="label">Phone Number</label>
                 <input value={form.phone_number} onChange={set('phone_number')} placeholder="+233 24 000 0000" className={`input-field ${errors.phone_number ? 'border-red-300' : ''}`} />
@@ -158,18 +157,10 @@ export function RegisterCompany() {
                 </select>
                 {errors.region && <p className="text-xs text-red-500 mt-1">{errors.region}</p>}
               </div>
-            
-
-              {/* <div className="md:col-span-2">
-                <label className="label">Company Description</label>
-                <textarea value={form.description} onChange={set('description')} rows={3} placeholder="Briefly describe what your company does and what interns can expect..." className={`input-field resize-none ${errors.description ? 'border-red-300' : ''}`} />
-                {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
-              </div> */}
               <div className="md:col-span-2">
                 <label className="label">Website <span className="text-text-secondary font-normal">(optional)</span></label>
                 <input value={form.website} onChange={set('website')} placeholder="e.g. https://yourcompany.com.gh" className="input-field" />
               </div>
-              
               <div className="md:col-span-2">
                 <label className="label">Company Description</label>
                 <textarea value={form.description} onChange={set('description')} rows={3} placeholder="Briefly describe what your company does and what interns can expect..." className={`input-field resize-none ${errors.description ? 'border-red-300' : ''}`} />
@@ -178,9 +169,7 @@ export function RegisterCompany() {
               <PasswordField value={form.password} onChange={set('password')} label="Password" error={errors.password} />
               <PasswordField value={form.confirm} onChange={set('confirm')} label="Confirm Password" error={errors.confirm} />
             </div>
-
             <p className="text-xs text-text-secondary mt-5">By registering, you agree that your account will be reviewed and verified by a CuriousMinds administrator before activation.</p>
-
             <button type="submit" disabled={loading} className="btn-secondary justify-center w-full mt-6 disabled:opacity-60">
               {loading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Create Company Account <ArrowRight size={18} /></>}
             </button>
@@ -193,34 +182,71 @@ export function RegisterCompany() {
     </div>
   )
 }
+
 export function RegisterSchool() {
   const navigate = useNavigate()
-  const [form, setForm] = useState({ name: '', type: '', email: '', phone: '', district: '', region: '', password: '', confirm: '' })
+  const [form, setForm] = useState({
+    school_name: '',
+    type: '',
+    email: '',
+    phone_number: '',
+    school_address: '',
+    region: '',
+    contact_person: '',
+    description: '',
+    website: '',
+    password: '',
+    confirm: ''
+  })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
+  const [serverError, setServerError] = useState('')
   const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
 
   const validate = () => {
     const e = {}
-    if (!form.name) e.name = 'School name is required'
+    if (!form.school_name) e.school_name = 'School name is required'
     if (!form.type) e.type = 'Please select school type'
     if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Valid email required'
-    if (!form.phone) e.phone = 'Phone is required'
-    if (!form.district) e.district = 'District is required'
+    if (!form.phone_number) e.phone_number = 'Phone is required'
+    if (!form.school_address) e.school_address = 'Address is required'
     if (!form.region) e.region = 'Region is required'
+    if (!form.contact_person) e.contact_person = 'Contact person is required'
+    if (!form.description) e.description = 'Description is required'
     if (form.password.length < 8) e.password = 'At least 8 characters'
     if (form.password !== form.confirm) e.confirm = 'Passwords do not match'
     return e
   }
 
-  const handleSubmit = (ev) => {
+  const handleSubmit = async (ev) => {
     ev.preventDefault()
+    setServerError('')
     const e = validate()
     setErrors(e)
     if (Object.keys(e).length > 0) return
     setLoading(true)
-    // TODO: POST /api/auth/register/school
-    setTimeout(() => { setLoading(false); navigate('/pending-approval') }, 1200)
+    try {
+      await registerSchool({
+        school_name: form.school_name,
+        email: form.email,
+        password: form.password,
+        school_address: form.school_address,
+        region: form.region,
+        contact_person: form.contact_person,
+        phone_number: form.phone_number,
+        description: form.description,
+        website: form.website || undefined,
+    })
+      navigate('/pending-approval')
+    } catch (err) {
+      if (err.response?.data?.error) {
+        setServerError(err.response.data.error)
+      } else {
+        setServerError('Something went wrong. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -239,12 +265,18 @@ export function RegisterSchool() {
             <p className="text-text-secondary mt-2">Get your students access to Ghana's best internship opportunities.</p>
           </div>
 
+          {serverError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center">
+              {serverError}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="card p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="md:col-span-2">
                 <label className="label">School Name</label>
-                <input value={form.name} onChange={set('name')} placeholder="e.g. Achimota Senior High School" className={`input-field ${errors.name ? 'border-red-300' : ''}`} />
-                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+                <input value={form.school_name} onChange={set('school_name')} placeholder="e.g. Achimota Senior High School" className={`input-field ${errors.school_name ? 'border-red-300' : ''}`} />
+                {errors.school_name && <p className="text-xs text-red-500 mt-1">{errors.school_name}</p>}
               </div>
               <div className="md:col-span-2">
                 <label className="label">School Type</label>
@@ -258,6 +290,11 @@ export function RegisterSchool() {
                 </div>
                 {errors.type && <p className="text-xs text-red-500 mt-1">{errors.type}</p>}
               </div>
+              <div className="md:col-span-2">
+                <label className="label">Contact Person</label>
+                <input value={form.contact_person} onChange={set('contact_person')} placeholder="e.g. Ama Asante" className={`input-field ${errors.contact_person ? 'border-red-300' : ''}`} />
+                {errors.contact_person && <p className="text-xs text-red-500 mt-1">{errors.contact_person}</p>}
+              </div>
               <div>
                 <label className="label">Email Address</label>
                 <input type="email" value={form.email} onChange={set('email')} placeholder="admin@school.edu.gh" className={`input-field ${errors.email ? 'border-red-300' : ''}`} />
@@ -265,13 +302,13 @@ export function RegisterSchool() {
               </div>
               <div>
                 <label className="label">Phone Number</label>
-                <input value={form.phone} onChange={set('phone')} placeholder="+233 30 000 0000" className={`input-field ${errors.phone ? 'border-red-300' : ''}`} />
-                {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                <input value={form.phone_number} onChange={set('phone_number')} placeholder="+233 30 000 0000" className={`input-field ${errors.phone_number ? 'border-red-300' : ''}`} />
+                {errors.phone_number && <p className="text-xs text-red-500 mt-1">{errors.phone_number}</p>}
               </div>
               <div>
-                <label className="label">District</label>
-                <input value={form.district} onChange={set('district')} placeholder="e.g. Ayawaso West" className={`input-field ${errors.district ? 'border-red-300' : ''}`} />
-                {errors.district && <p className="text-xs text-red-500 mt-1">{errors.district}</p>}
+                <label className="label">School Address</label>
+                <input value={form.school_address} onChange={set('school_address')} placeholder="e.g. 123 School Road, Accra" className={`input-field ${errors.school_address ? 'border-red-300' : ''}`} />
+                {errors.school_address && <p className="text-xs text-red-500 mt-1">{errors.school_address}</p>}
               </div>
               <div>
                 <label className="label">Region</label>
@@ -281,10 +318,19 @@ export function RegisterSchool() {
                 </select>
                 {errors.region && <p className="text-xs text-red-500 mt-1">{errors.region}</p>}
               </div>
+              <div className="md:col-span-2">
+                <label className="label">Website <span className="text-text-secondary font-normal">(optional)</span></label>
+                <input value={form.website} onChange={set('website')} placeholder="e.g. https://yourschool.edu.gh" className="input-field" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="label">School Description</label>
+                <textarea value={form.description} onChange={set('description')} rows={3} placeholder="Briefly describe your school and what students can expect from internships..." className={`input-field resize-none ${errors.description ? 'border-red-300' : ''}`} />
+                {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
+              </div>
               <PasswordField value={form.password} onChange={set('password')} label="Password" error={errors.password} />
               <PasswordField value={form.confirm} onChange={set('confirm')} label="Confirm Password" error={errors.confirm} />
             </div>
-
+            <p className="text-xs text-text-secondary mt-5">By registering, you agree that your account will be reviewed and verified by a CuriousMinds administrator before activation.</p>
             <button type="submit" disabled={loading} className="btn-primary justify-center w-full mt-6 disabled:opacity-60">
               {loading ? <span className="w-5 h-5 border-2 border-primary-dark/30 border-t-primary-dark rounded-full animate-spin" /> : <>Create School Account <ArrowRight size={18} /></>}
             </button>

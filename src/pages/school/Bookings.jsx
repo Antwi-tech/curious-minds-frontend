@@ -1,70 +1,101 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, X } from "lucide-react";
-import { SchoolLayout, StatusBadge, PageHeader, EmptyState, Modal, Toast } from "../../components/shared";
-import { mockBookings } from "../../data/mockData";
+import { DashboardLayout, StatusBadge, EmptyState, Modal, Toast, FilterTabs } from "../../components/Shared";
+import { getSchoolBookings, cancelSchoolBooking } from "../../api";
 
-const TABS = ["all", "pending", "approved", "cancelled", "completed"];
+const getStoredUser = () => {
+  try { return JSON.parse(localStorage.getItem('user')) || {} }
+  catch { return {} }
+}
 
 export default function SchoolBookings() {
-  const [tab, setTab] = useState("all");
-  const [bookings, setBookings] = useState(mockBookings);
+  const user = getStoredUser();
+  const [tab, setTab] = useState("All");
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [cancelModal, setCancelModal] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const filtered = tab === "all" ? bookings : bookings.filter(b => b.status === tab);
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const res = await getSchoolBookings();
+        setBookings(res.data.bookings || []);
+      } catch {
+        setToast({ message: 'Failed to load bookings', type: 'error' });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBookings();
+  }, []);
 
-  const handleCancel = () => {
-    // TODO: replace with API call PATCH /api/bookings/:id { status: "cancelled" }
-    setBookings(bookings.map(b => b.id === cancelModal.id ? { ...b, status: "cancelled" } : b));
-    setCancelModal(null);
-    setToast({ message: "Booking cancelled", type: "info" });
+  const tabs = ["All", "pending", "confirmed", "cancelled"];
+  const filtered = tab === "All" ? bookings : bookings.filter(b => b.status === tab);
+
+  const handleCancel = async () => {
+    try {
+      await cancelSchoolBooking(cancelModal.booking_id);
+      setBookings(prev => prev.map(b =>
+        b.booking_id === cancelModal.booking_id ? { ...b, status: 'cancelled' } : b
+      ));
+      setToast({ message: 'Booking cancelled successfully', type: 'info' });
+    } catch {
+      setToast({ message: 'Failed to cancel booking', type: 'error' });
+    } finally {
+      setCancelModal(null);
+    }
   };
 
   return (
-    <SchoolLayout title="My Bookings">
+    <DashboardLayout role="school" userName={user.school_name || 'School'} title="My Bookings">
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+
       <Modal open={!!cancelModal} onClose={() => setCancelModal(null)} title="Cancel Booking">
-        <p className="text-text-secondary text-sm mb-6">Are you sure you want to cancel the booking for <strong className="text-text-primary">"{cancelModal?.slot}"</strong>?</p>
-        <div className="flex gap-3 justify-end">
-          <button onClick={() => setCancelModal(null)} className="btn-outline btn-sm">Keep Booking</button>
-          <button onClick={handleCancel} className="bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors">Cancel Booking</button>
+        <p className="text-text-secondary text-sm mb-6">
+          Are you sure you want to cancel the booking with{' '}
+          <strong className="text-text-primary">{cancelModal?.company_name}</strong>?
+        </p>
+        <div className="flex gap-3">
+          <button onClick={() => setCancelModal(null)} className="btn-outline flex-1 justify-center">Keep Booking</button>
+          <button onClick={handleCancel}
+            className="flex-1 justify-center bg-red-500 text-white font-semibold px-4 py-2.5 rounded-xl hover:bg-red-600 transition-colors inline-flex items-center justify-center gap-2">
+            <X size={16} /> Cancel Booking
+          </button>
         </div>
       </Modal>
 
-      <PageHeader title="My Bookings" subtitle="Track all your internship placement requests" />
-
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold capitalize whitespace-nowrap transition-all ${tab === t ? "bg-primary-dark text-white" : "bg-white text-text-secondary hover:text-primary border border-gray-200"}`}>
-            {t}
-          </button>
-        ))}
+      <div className="mb-6">
+        <FilterTabs tabs={tabs} active={tab} onChange={setTab} />
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState icon={BookOpen} title="No bookings" description={`No ${tab === "all" ? "" : tab} bookings found.`}
+      {loading ? (
+        <div className="text-center py-16 text-text-secondary text-sm">Loading bookings...</div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={BookOpen} title="No bookings"
+          desc={`No ${tab === 'All' ? '' : tab} bookings found.`}
           action={<Link to="/school/browse" className="btn-primary">Browse Opportunities</Link>} />
       ) : (
         <div className="space-y-3">
           {filtered.map(b => (
-            <div key={b.id} className="card flex flex-col sm:flex-row sm:items-center gap-4">
+            <div key={b.booking_id} className="card p-5 flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex-1">
-                <h3 className="font-semibold text-text-primary">{b.slot}</h3>
-                <p className="text-text-secondary text-sm">{b.company}</p>
+                <h3 className="font-semibold text-text-primary">{b.company_name}</h3>
+                <p className="text-text-secondary text-sm">{b.industry_type || 'General Internship'}</p>
                 <div className="flex flex-wrap gap-3 mt-2 text-xs text-text-secondary">
-                  <span className="font-mono">{b.slotDate}</span>
+                  <span className="font-mono">{new Date(b.start_date).toLocaleDateString()}</span>
+                  <span>→</span>
+                  <span className="font-mono">{new Date(b.end_date).toLocaleDateString()}</span>
                   <span>•</span>
-                  <span>{b.students} students</span>
-                  <span>•</span>
-                  <span>Submitted {b.submittedAt}</span>
+                  <span>Booked {new Date(b.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <StatusBadge status={b.status} />
-                <Link to={`/school/bookings/${b.id}`} className="text-primary text-xs font-semibold hover:underline">View</Link>
-                {b.status === "pending" && (
+                <Link to={`/school/booking/${b.booking_id}`}
+                  className="text-primary text-xs font-semibold hover:underline">View</Link>
+                {b.status === 'pending' && (
                   <button onClick={() => setCancelModal(b)}
                     className="flex items-center gap-1 text-xs text-red-500 border border-red-200 px-2.5 py-1.5 rounded-lg hover:bg-red-50 font-semibold transition-colors">
                     <X size={11} /> Cancel
@@ -75,6 +106,6 @@ export default function SchoolBookings() {
           ))}
         </div>
       )}
-    </SchoolLayout>
+    </DashboardLayout>
   );
 }
