@@ -28,6 +28,14 @@ API.interceptors.response.use(
   }
 );
 
+export const logout = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('role');
+  window.location.href = '/login';
+};
+
 // ─── AUTH - COMPANY ───────────────────────────────────────
 export const registerCompany = (data) => API.post('/company/register', data);
 export const loginCompany = (data) => API.post('/company/login', data);
@@ -51,7 +59,7 @@ export const changeAdminPassword = (id, data) => API.patch(`/admin/change_passwo
 
 // ─── ADMIN - COMPANY MANAGEMENT ───────────────────────────
 export const adminGetAllCompanies = () => API.get('/admin/companies');
-export const adminVerifyCompany = (id) => API.patch(`/admin/${id}/verify`);
+export const adminVerifyCompany = (id) => API.patch(`/admin/companies/${id}/verify`);
 export const adminActivateCompany = (id) => API.patch(`/admin/companies/${id}/activate`);
 export const adminDeactivateCompany = (id) => API.patch(`/admin/companies/${id}/deactivate`);
 
@@ -70,11 +78,17 @@ export const adminGetAvailableTimes = () => API.get('/admin/available_times');
 export const getCompanyProfile = () => API.get('/company/profile');
 export const getCompanySlots = () => API.get('/company/slots');
 export const createCompanySlot = (data) => API.post('/company/slots', data);
-export const deleteCompanySlot = (id) => API.delete(`/company/slots/${id}`);
+export const deleteCompanySlot = (id) => API.delete(`/company/slot/delete/${id}`);
 export const getCompanyBookings = () => API.get('/company/bookings');
 export const approveBooking = (id) => API.patch(`/company/bookings/${id}/approve`);
 export const rejectBooking = (id) => API.patch(`/company/bookings/${id}/reject`);
 
+// ─── SCHOOL - SLOTS & BOOKINGS ─────────────────────────────────────────
+export const getSchoolAvailableSlots = () => API.get('/school/slots');
+export const bookSlot = (data) => API.post('/school/bookings', data);
+export const getSchoolBookings = () => API.get('/school/bookings');
+export const cancelSchoolBooking = (id) => API.patch(`/school/bookings/${id}/cancel`);
+export const getSchoolProfileData = () => API.get('/school/school/profile');
 export default API;
 
 
