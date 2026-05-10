@@ -101,7 +101,7 @@ export default function RegisterSchool() {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-5">
-              <FormField label="District" error={errors.district}>
+              <FormField label="School address/District" error={errors.district}>
                 <div className="relative">
                   <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
                   <input type="text" placeholder="e.g. Accra Metro" value={form.district}
