@@ -1,65 +1,97 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, Clock, CheckCircle, Users, Search, ArrowRight } from "lucide-react";
-import { SchoolLayout, StatCard, StatusBadge } from "../../components/shared";
-import { mockBookings } from "../../data/mockData";
+import { DashboardLayout, StatCard, StatusBadge, Toast } from "../../components/Shared";
+import { getSchoolBookings, getSchoolProfileData } from "../../api";
+
+const getStoredUser = () => {
+  try { return JSON.parse(localStorage.getItem('user')) || {} }
+  catch { return {} }
+}
 
 export default function SchoolDashboard() {
-  const myBookings = mockBookings.filter(b => b.school === "Achimota Senior High School");
+  const user = getStoredUser();
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await getSchoolBookings();
+        setBookings(res.data.bookings || []);
+      } catch {
+        setToast({ message: 'Failed to load dashboard data', type: 'error' });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const pendingBookings = bookings.filter(b => b.status === 'pending');
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
+  const cancelledBookings = bookings.filter(b => b.status === 'cancelled');
+  const recentBookings = bookings.slice(0, 5);
+
   return (
-    <SchoolLayout title="Dashboard">
+    <DashboardLayout role="school" userName={user.school_name || 'School'} title="Dashboard">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-primary to-primary-light rounded-2xl p-6 mb-6 relative overflow-hidden">
-        <div className="kente-border absolute top-0 left-0 right-0" />
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="gradient-hero rounded-3xl p-8 mb-8 relative overflow-hidden animate-fade-in-up">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #F4A623 0px, #F4A623 2px, transparent 2px, transparent 20px)' }} />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <p className="text-white/70 text-sm font-semibold mb-1">Welcome back 👋</p>
-            <h2 className="font-display font-bold text-white text-2xl">Achimota Senior High School</h2>
-            <p className="text-white/60 text-sm mt-1">SHS • Accra Metro, Greater Accra</p>
+            <p className="text-white/70 text-sm font-medium mb-1">Welcome back 👋</p>
+            <h2 className="font-display text-3xl font-bold text-white mb-2">{user.school_name || '...'}</h2>
+            <p className="text-white/60 text-sm">{user.region}</p>
           </div>
-          <Link to="/school/browse" className="btn-accent btn-sm whitespace-nowrap">
-            <Search size={14} /> Find Internships
+          <Link to="/school/browse" className="btn-primary whitespace-nowrap">
+            <Search size={16} /> Find Internships
           </Link>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard icon={BookOpen} label="Active Bookings" value="2" color="bg-primary/10" iconColor="text-primary" />
-        <StatCard icon={Clock} label="Pending Bookings" value="1" color="bg-amber-50" iconColor="text-amber-600" />
-        <StatCard icon={CheckCircle} label="Completed Internships" value="4" color="bg-green-50" iconColor="text-green-600" trend="This year" />
-        <StatCard icon={Users} label="Total Students Sent" value="18" color="bg-blue-50" iconColor="text-blue-600" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard icon={BookOpen} label="Total Bookings" value={loading ? '...' : bookings.length} color="primary" />
+        <StatCard icon={Clock} label="Pending" value={loading ? '...' : pendingBookings.length} color="amber" />
+        <StatCard icon={CheckCircle} label="Confirmed" value={loading ? '...' : confirmedBookings.length} color="green" />
+        <StatCard icon={Users} label="Cancelled" value={loading ? '...' : cancelledBookings.length} color="blue" />
       </div>
 
       {/* Recent Bookings */}
       <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display font-bold text-text-primary text-lg">My Recent Bookings</h3>
-          <Link to="/school/bookings" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
+        <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+          <h3 className="section-title text-lg">Recent Bookings</h3>
+          <Link to="/school/bookings" className="text-sm text-primary font-medium hover:underline flex items-center gap-1">
             View all <ArrowRight size={14} />
           </Link>
         </div>
-        {myBookings.length === 0 ? (
-          <div className="text-center py-8 text-text-secondary text-sm">
-            No bookings yet. <Link to="/school/browse" className="text-primary font-semibold hover:underline">Browse opportunities</Link>
+
+        {loading ? (
+          <div className="text-center py-10 text-text-secondary text-sm">Loading...</div>
+        ) : recentBookings.length === 0 ? (
+          <div className="text-center py-10 text-text-secondary text-sm">
+            No bookings yet.{' '}
+            <Link to="/school/browse" className="text-primary font-semibold hover:underline">Browse opportunities</Link>
           </div>
         ) : (
-          <div className="space-y-3">
-            {myBookings.map(b => (
-              <Link key={b.id} to={`/school/bookings/${b.id}`}
-                className="flex items-center justify-between p-4 bg-surface rounded-xl hover:bg-gray-100 transition-colors">
+          <div className="divide-y divide-gray-50">
+            {recentBookings.map(b => (
+              <div key={b.booking_id} className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-surface transition-colors">
                 <div>
-                  <p className="font-semibold text-text-primary text-sm">{b.slot}</p>
-                  <p className="text-text-secondary text-xs mt-0.5">{b.company} • {b.slotDate}</p>
+                  <p className="font-semibold text-text-primary text-sm">{b.company_name}</p>
+                  <p className="text-text-secondary text-xs mt-0.5">
+                    {new Date(b.start_date).toLocaleDateString()} → {new Date(b.end_date).toLocaleDateString()}
+                  </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-text-secondary">{b.students} students</span>
-                  <StatusBadge status={b.status} />
-                </div>
-              </Link>
+                <StatusBadge status={b.status} />
+              </div>
             ))}
           </div>
         )}
       </div>
-    </SchoolLayout>
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    </DashboardLayout>
   );
 }
