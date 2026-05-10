@@ -123,16 +123,22 @@ export function Sidebar({ role = 'company', userName = 'User', userSub = '' }) {
       </nav>
 
       {/* Logout */}
-      <div className="p-3 border-t border-white/10">
-        <button
-          onClick={() => navigate('/login')}
-          className={`sidebar-link w-full hover:bg-red-500/20 hover:text-red-300 ${collapsed ? 'justify-center px-2' : ''}`}
-          title={collapsed ? 'Logout' : ''}
-        >
-          <LogOut size={18} />
-          {!collapsed && <span>Logout</span>}
-        </button>
-      </div>
+    <div className="p-3 border-t border-white/10">
+      <button
+        onClick={() => {
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('role');
+          navigate('/login');
+        }}
+        className={`sidebar-link w-full hover:bg-red-500/20 hover:text-red-300 ${collapsed ? 'justify-center px-2' : ''}`}
+        title={collapsed ? 'Logout' : ''}
+      >
+        <LogOut size={18} />
+        {!collapsed && <span>Logout</span>}
+      </button>
+    </div>
     </aside>
   )
 }
