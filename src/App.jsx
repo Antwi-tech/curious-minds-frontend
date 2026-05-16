@@ -23,11 +23,12 @@ import SchoolBookings from './pages/school/Bookings'
 import BrowseOpportunities from './pages/school/BrowseOpportunities'
 import BookSlot from './pages/school/BookSlot'
 import SchoolProfile from './pages/school/Profile'
+import SchoolChangePassword from './pages/school/ChangePassword'
 import SlotDetail from './pages/school/SlotDetail'
 import SchoolBookingDetail from './pages/school/BookingDetail'
 
 // Admin pages
-import { AdminDashboard, AdminCompanies, AdminCompanyDetail, AdminSchools, AdminSchoolDetail, AdminBookings } from './pages/admin/AdminPages'
+import { AdminDashboard, AdminCompanies, AdminCompanyDetail, AdminSchools, AdminSchoolDetail, AdminBookings, AdminSettings } from './pages/admin/AdminPages'
 
 export default function App() {
   return (
@@ -58,8 +59,8 @@ export default function App() {
         <Route path="/school/book/:id" element={<ProtectedRoute allowedRole="school"><BookSlot /></ProtectedRoute>} />
         <Route path="/school/bookings" element={<ProtectedRoute allowedRole="school"><SchoolBookings /></ProtectedRoute>} />
         <Route path="/school/booking/:id" element={<ProtectedRoute allowedRole="school"><SchoolBookingDetail /></ProtectedRoute>} />
-        <Route path="/school/settings" element={<ProtectedRoute allowedRole="school"><ChangePassword role="school" /></ProtectedRoute>} />
-
+        <Route path="/school/settings" element={<ProtectedRoute allowedRole="school"><SchoolChangePassword /></ProtectedRoute>} />
+        
         {/* Admin - protected */}
         <Route path="/admin/dashboard" element={<ProtectedRoute allowedRole="admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/companies" element={<ProtectedRoute allowedRole="admin"><AdminCompanies /></ProtectedRoute>} />
@@ -67,7 +68,7 @@ export default function App() {
         <Route path="/admin/schools" element={<ProtectedRoute allowedRole="admin"><AdminSchools /></ProtectedRoute>} />
         <Route path="/admin/school/:id" element={<ProtectedRoute allowedRole="admin"><AdminSchoolDetail /></ProtectedRoute>} />
         <Route path="/admin/bookings" element={<ProtectedRoute allowedRole="admin"><AdminBookings /></ProtectedRoute>} />
-
+        <Route path="/admin/settings" element={<ProtectedRoute allowedRole="admin"><AdminSettings /></ProtectedRoute>} />
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
