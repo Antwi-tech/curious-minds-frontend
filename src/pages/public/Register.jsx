@@ -4,6 +4,7 @@ import { Logo } from '../../components/Shared'
 import { ghanaRegions } from '../../data/mockData'
 import { Eye, EyeOff, ArrowRight, Building2 } from 'lucide-react'
 import { registerCompany, registerSchool } from '../../api'
+import { GraduationCap } from 'lucide-react'
 
 function PasswordField({ value, onChange, label, error, placeholder }) {
   const [show, setShow] = useState(false)
@@ -258,8 +259,8 @@ export function RegisterSchool() {
       <div className="flex-1 flex items-center justify-center p-6 py-12">
         <div className="w-full max-w-2xl">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-accent/20 flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">🏫</span>
+            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-md">
+              <GraduationCap size={28} className="text-white" />
             </div>
             <h1 className="font-display text-3xl font-bold text-text-primary">School Registration</h1>
             <p className="text-text-secondary mt-2">Get your students access to Ghana's best internship opportunities.</p>
