@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { DashboardLayout, StatusBadge, Toast } from '../../components/Shared'
 import { ghanaRegions } from '../../data/mockData'
-import { getCompanyProfile } from '../../api'
 import { getStoredUser } from './companyHelpers'
+import { getCompanyProfile, updateCompanyProfile } from '../../api'
 
 export default function CompanyProfile() {
   const [form, setForm] = useState({})
@@ -27,11 +27,24 @@ export default function CompanyProfile() {
 
   const handleSave = async () => {
     setSaving(true)
-    // TODO: PATCH /company/profile
-    setTimeout(() => {
-      setSaving(false)
+    try {
+      await updateCompanyProfile({
+        company_name: form.company_name,
+        email: form.email,
+        industry_type: form.industry_type,
+        company_address: form.company_address,
+        region: form.region,
+        contact_person: form.contact_person,
+        phone_number: form.phone_number,
+        website: form.website,
+        description: form.description,
+      })
       setToast({ message: 'Profile updated successfully!', type: 'success' })
-    }, 800)
+    } catch {
+      setToast({ message: 'Failed to update profile', type: 'error' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (loading) return (
@@ -42,21 +55,30 @@ export default function CompanyProfile() {
 
   return (
     <DashboardLayout role="company" userName={form.company_name || 'Company'} title="My Profile">
-      <div className="max-w-2xl">
-        <div className="card p-6 mb-6 flex items-center gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-display text-2xl font-bold">
-            {(form.company_name || 'C').charAt(0)}
-          </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="font-display text-xl font-bold text-text-primary">{form.company_name}</h2>
-              <StatusBadge status={form.is_verified ? 'verified' : 'pending'} />
+      <div className="max-w-3xl mx-auto">
+
+        {/* Header card — make it more visually impressive */}
+        <div className="card p-8 mb-6">
+          <div className="flex items-center gap-6">
+            {/* Larger avatar with gradient */}
+            <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center text-white font-display text-3xl font-bold flex-shrink-0">
+              {(form.company_name || 'C').charAt(0)}
             </div>
-            <p className="text-text-secondary text-sm mt-0.5">{form.industry_type}</p>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="font-display text-2xl font-bold text-text-primary">{form.company_name}</h2>
+                <StatusBadge status={form.is_verified ? 'verified' : 'pending'} />
+              </div>
+              <p className="text-text-secondary mt-1">{form.industry_type}</p>
+              <p className="text-text-secondary text-sm">{form.region}</p>
+            </div>
           </div>
         </div>
-        <div className="card p-8">
-          <h3 className="section-title text-base mb-6">Company Information</h3>
+
+        {/* Form card — give it more breathing room */}
+        <div className="card p-10">
+          <h3 className="section-title text-lg mb-8">Company Information</h3>
+          {/* form fields go here */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="md:col-span-2">
               <label className="label">Company Name</label>

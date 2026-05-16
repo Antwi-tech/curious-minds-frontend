@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { School, Mail, Phone, MapPin, CheckCircle } from "lucide-react";
 import { DashboardLayout, Toast, StatusBadge } from "../../components/Shared";
 import { ghanaRegions } from "../../data/mockData";
-import { getSchoolProfileData } from "../../api";
+import { getSchoolProfileData, updateSchoolProfile } from '../../api'
 
 const getStoredUser = () => {
   try { return JSON.parse(localStorage.getItem('user')) || {} }
@@ -51,11 +51,23 @@ export default function SchoolProfile() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    // TODO: PATCH /school/profile
-    setTimeout(() => {
-      setSaving(false);
+    try {
+      await updateSchoolProfile({
+        school_name: form.school_name,
+        email: form.email,
+        school_address: form.school_address,
+        region: form.region,
+        contact_person: form.contact_person,
+        phone_number: form.phone_number,
+        website: form.website,
+        description: form.description,
+      })
       setToast({ message: 'Profile updated successfully!', type: 'success' });
-    }, 800);
+    } catch {
+      setToast({ message: 'Failed to update profile', type: 'error' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return (
@@ -67,7 +79,7 @@ export default function SchoolProfile() {
   return (
     <DashboardLayout role="school" userName={form.school_name || 'School'} title="My Profile">
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
-      <div className="max-w-2xl">
+      <div className="max-w-3xl mx-auto">
         {/* Header card */}
         <div className="card p-6 mb-6 flex items-center gap-4">
           <div className="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center flex-shrink-0">
