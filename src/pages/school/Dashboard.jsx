@@ -41,7 +41,7 @@ export default function SchoolDashboard() {
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #F4A623 0px, #F4A623 2px, transparent 2px, transparent 20px)' }} />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <p className="text-white/70 text-sm font-medium mb-1">Welcome back 👋</p>
+            <p className="text-white/70 text-sm font-medium mb-1">Welcome back </p>
             <h2 className="font-display text-3xl font-bold text-white mb-2">{user.school_name || '...'}</h2>
             <p className="text-white/60 text-sm">{user.region}</p>
           </div>

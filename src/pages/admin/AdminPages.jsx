@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { DashboardLayout, StatCard, StatusBadge, FilterTabs, Toast, EmptyState } from '../../components/Shared'
-import { mockBookings } from '../../data/mockData'
+import { DashboardLayout, StatCard, StatusBadge, FilterTabs, Toast } from '../../components/Shared'
 import {
-  Building2, GraduationCap, BookOpen, AlertCircle, Search, Download,
-  CheckCircle, XCircle, Eye, UserX, ChevronRight, Clock
+  Building2, GraduationCap, BookOpen, AlertCircle, Search,
+  CheckCircle, Eye, UserX, ChevronRight, Clock, Lock, EyeOff
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import {
   adminGetAllCompanies, adminVerifyCompany, adminDeactivateCompany, adminActivateCompany,
-  adminGetAllSchools, adminVerifySchool, adminDeactivateSchool, adminGetAllBookings
+  adminGetAllSchools, adminVerifySchool, adminDeactivateSchool, adminGetAllBookings,
+  adminGetCompanyBookings, adminGetSchoolBookings, changeAdminPassword
 } from '../../api'
 
 const bookingChartData = [
@@ -22,6 +22,101 @@ const statusData = [
   { name: 'Completed', value: 30, color: '#3B82F6' },
   { name: 'Rejected', value: 7, color: '#EF4444' },
 ]
+// const bookingChartData = [
+//   { month: 'Jan', bookings: 12 }, { month: 'Feb', bookings: 19 }, { month: 'Mar', bookings: 28 },
+//   { month: 'Apr', bookings: 24 }, { month: 'May', bookings: 35 }, { month: 'Jun', bookings: 42 },
+// ]
+// const statusData = [
+//   { name: 'Approved', value: 45, color: '#22C55E' },
+//   { name: 'Pending', value: 18, color: '#F59E0B' },
+//   { name: 'Completed', value: 30, color: '#3B82F6' },
+//   { name: 'Rejected', value: 7, color: '#EF4444' },
+// ]
+
+// ─── Admin Settings ───────────────────────────────────────────────────────────
+export function AdminSettings() {
+  const [form, setForm] = useState({ current: '', newPw: '', confirm: '' })
+  const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
+  const [toast, setToast] = useState(null)
+  const [showFields, setShowFields] = useState({ current: false, newPw: false, confirm: false })
+  const user = (() => { try { return JSON.parse(localStorage.getItem('user')) || {} } catch { return {} } })()
+  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  const toggleShow = k => () => setShowFields(p => ({ ...p, [k]: !p[k] }))
+
+  const validate = () => {
+    const e = {}
+    if (!form.current) e.current = 'Current password is required'
+    if (form.newPw.length < 8) e.newPw = 'At least 8 characters'
+    if (form.newPw !== form.confirm) e.confirm = 'Passwords do not match'
+    return e
+  }
+
+  const handleSubmit = async (ev) => {
+    ev.preventDefault()
+    const e = validate()
+    setErrors(e)
+    if (Object.keys(e).length > 0) return
+    setLoading(true)
+    try {
+      await changeAdminPassword(user.id, {
+        old_password: form.current,
+        new_password: form.newPw
+      })
+      setForm({ current: '', newPw: '', confirm: '' })
+      setToast({ message: 'Password changed successfully!', type: 'success' })
+    } catch {
+      setToast({ message: 'Failed to change password. Check current password.', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fields = [
+    { key: 'current', label: 'Current Password' },
+    { key: 'newPw', label: 'New Password', hint: 'Minimum 8 characters' },
+    { key: 'confirm', label: 'Confirm New Password' },
+  ]
+
+  return (
+    <DashboardLayout role="admin" userName={`${user.first_name || 'Admin'} ${user.last_name || ''}`} title="Settings">
+      <div className="max-w-md">
+        <div className="card p-8">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
+            <Lock size={24} className="text-primary" />
+          </div>
+          <h2 className="font-display text-xl font-bold text-text-primary mb-1">Change Password</h2>
+          <p className="text-text-secondary text-sm mb-6">For your security, choose a strong unique password.</p>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            {fields.map(({ key, label, hint }) => (
+              <div key={key}>
+                <label className="label">{label}</label>
+                <div className="relative">
+                  <input
+                    type={showFields[key] ? 'text' : 'password'}
+                    value={form[key]}
+                    onChange={set(key)}
+                    placeholder="••••••••"
+                    className={`input-field pr-12 ${errors[key] ? 'border-red-300' : ''}`}
+                  />
+                  <button type="button" onClick={toggleShow(key)} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary">
+                    {showFields[key] ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {hint && <p className="text-xs text-text-secondary mt-1">{hint}</p>}
+                {errors[key] && <p className="text-xs text-red-500 mt-1">{errors[key]}</p>}
+              </div>
+            ))}
+            <button type="submit" disabled={loading} className="btn-secondary justify-center mt-2 disabled:opacity-60">
+              {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Save New Password'}
+            </button>
+          </form>
+        </div>
+      </div>
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    </DashboardLayout>
+  )
+}
 
 // ─── Admin Dashboard ──────────────────────────────────────────────────────────
 export function AdminDashboard() {
@@ -289,28 +384,41 @@ export function AdminCompanies() {
 
 // ─── Admin Company Detail ─────────────────────────────────────────────────────
 export function AdminCompanyDetail() {
-  const companyBookings = mockBookings.filter(b => b.company === 'Ecobank Ghana')
   const [company, setCompany] = useState(null)
+  const [companyBookings, setCompanyBookings] = useState([])
   const [loading, setLoading] = useState(true)
+  const [bookingsLoading, setBookingsLoading] = useState(true)
   const [toast, setToast] = useState(null)
-
-  // Get company id from URL
   const companyId = window.location.pathname.split('/').pop()
 
   useEffect(() => {
-    const fetchCompanies = async () => {
+    const fetchCompany = async () => {
       try {
         const res = await adminGetAllCompanies()
         const found = (res.data.companies || []).find(c => String(c.company_id) === String(companyId))
         setCompany(found || null)
-      } catch (err) {
+      } catch {
         setToast({ message: 'Failed to load company', type: 'error' })
       } finally {
         setLoading(false)
       }
     }
-    fetchCompanies()
+    fetchCompany()
   }, [companyId])
+
+  useEffect(() => {
+  const fetchBookings = async () => {
+    try {
+      const res = await adminGetCompanyBookings(companyId)
+      setCompanyBookings(res.data || [])
+    } catch {
+      console.error('Failed to load company bookings')
+    } finally {
+      setBookingsLoading(false)
+    }
+  }
+  fetchBookings()
+}, [companyId])
 
   const getStatus = (c) => {
     if (!c.is_active) return 'deactivated'
@@ -367,7 +475,6 @@ export function AdminCompanyDetail() {
             </div>
             <StatusBadge status={getStatus(company)} />
           </div>
-
           <div className="grid grid-cols-2 gap-5 mb-6">
             {[
               ['Email', company.email],
@@ -383,14 +490,12 @@ export function AdminCompanyDetail() {
               </div>
             ))}
           </div>
-
           {company.description && (
             <div className="bg-surface rounded-xl p-4 mb-6">
               <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">About</p>
               <p className="text-text-primary text-sm">{company.description}</p>
             </div>
           )}
-
           <div className="flex gap-3">
             {!company.is_verified && company.is_active && (
               <button onClick={handleVerify} className="btn-secondary gap-2">
@@ -408,24 +513,28 @@ export function AdminCompanyDetail() {
           </div>
         </div>
 
-        <div className="card">
-          <div className="p-6 border-b border-gray-50">
-            <h3 className="section-title text-base">Booking History</h3>
+          <div className="card">
+      <div className="p-6 border-b border-gray-50">
+        <h3 className="section-title text-base">Booking History</h3>
+      </div>
+      <div className="divide-y divide-gray-50">
+        {bookingsLoading ? (
+          <p className="text-center text-text-secondary text-sm py-8">Loading...</p>
+        ) : companyBookings.length === 0 ? (
+          <p className="text-center text-text-secondary text-sm py-8">No bookings yet</p>
+        ) : companyBookings.map(b => (
+          <div key={b.booking_id} className="px-6 py-4 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-sm text-text-primary">{b.school_name}</p>
+              <p className="text-xs text-text-secondary font-mono">
+                {new Date(b.start_date).toLocaleDateString()} → {new Date(b.end_date).toLocaleDateString()}
+              </p>
+            </div>
+            <StatusBadge status={b.status} />
           </div>
-          <div className="divide-y divide-gray-50">
-            {companyBookings.length === 0
-              ? <p className="text-center text-text-secondary text-sm py-8">No bookings yet</p>
-              : companyBookings.map(b => (
-                <div key={b.id} className="px-6 py-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-sm text-text-primary">{b.school}</p>
-                    <p className="text-xs text-text-secondary">{b.slotTitle} · {b.date}</p>
-                  </div>
-                  <StatusBadge status={b.status} />
-                </div>
-              ))}
-          </div>
-        </div>
+      ))}
+    </div>
+</div>
       </div>
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
     </DashboardLayout>
@@ -555,15 +664,16 @@ export function AdminSchools() {
   )
 }
 
-// ─── Admin School Detail ──────────────────────────────────────────────────────
 export function AdminSchoolDetail() {
   const [school, setSchool] = useState(null)
+  const [schoolBookings, setSchoolBookings] = useState([])
   const [loading, setLoading] = useState(true)
+  const [bookingsLoading, setBookingsLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const schoolId = window.location.pathname.split('/').pop()
-
+  
   useEffect(() => {
-    const fetchSchools = async () => {
+    const fetchSchool = async () => {
       try {
         const res = await adminGetAllSchools()
         const found = (res.data.schools || []).find(s => String(s.school_id) === String(schoolId))
@@ -574,8 +684,22 @@ export function AdminSchoolDetail() {
         setLoading(false)
       }
     }
-    fetchSchools()
+    fetchSchool()
   }, [schoolId])
+
+  useEffect(() => {
+  const fetchBookings = async () => {
+    try {
+      const res = await adminGetSchoolBookings(schoolId)
+      setSchoolBookings(res.data || [])
+    } catch {
+      console.error('Failed to load school bookings')
+    } finally {
+      setBookingsLoading(false)
+    }
+  }
+  fetchBookings()
+}, [schoolId])
 
   const getStatus = (s) => {
     if (!s.is_active) return 'deactivated'
@@ -615,7 +739,7 @@ export function AdminSchoolDetail() {
               ['Email', school.email],
               ['Phone', school.phone_number],
               ['Region', school.region],
-              ['District', school.district || '—'],
+              ['Address', school.school_address || '—'],
             ].map(([l, v]) => (
               <div key={l}>
                 <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">{l}</p>
@@ -631,19 +755,42 @@ export function AdminSchoolDetail() {
             )}
           </div>
         </div>
+
+        <div className="card mt-6">
+        <div className="p-6 border-b border-gray-50">
+          <h3 className="section-title text-base">Booking History</h3>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {bookingsLoading ? (
+            <p className="text-center text-text-secondary text-sm py-8">Loading...</p>
+          ) : schoolBookings.length === 0 ? (
+            <p className="text-center text-text-secondary text-sm py-8">No bookings yet</p>
+          ) : schoolBookings.map(b => (
+            <div key={b.booking_id} className="px-6 py-4 flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-sm text-text-primary">{b.company_name}</p>
+                <p className="text-xs text-text-secondary font-mono">
+                  {new Date(b.start_date).toLocaleDateString()} → {new Date(b.end_date).toLocaleDateString()}
+                </p>
+              </div>
+              <StatusBadge status={b.status} />
+            </div>
+          ))}
+        </div>
+      </div>
       </div>
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
     </DashboardLayout>
   )
 }
 
+
 // ─── Admin Bookings ───────────────────────────────────────────────────────────
 export function AdminBookings() {
-  const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
-  const filters = ['All', 'Pending', 'Approved', 'Rejected', 'Completed', 'Cancelled']
+  const filters = ['All', 'pending', 'confirmed', 'cancelled']
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -659,14 +806,16 @@ export function AdminBookings() {
     fetchBookings()
   }, [])
 
-  const filtered = bookings.filter(b => {
-    const status = filter === 'All' || (b.status || '').toLowerCase() === filter.toLowerCase()
-    return status
-  })
+  const filtered = bookings.filter(b =>
+    filter === 'All' || (b.status || '').toLowerCase() === filter.toLowerCase()
+  )
 
   return (
     <DashboardLayout role="admin" userName="Admin" title="All Bookings">
-      <div className="mb-4"><FilterTabs tabs={filters} active={filter} onChange={setFilter} /></div>
+      <div className="mb-6">
+        <FilterTabs tabs={filters} active={filter} onChange={setFilter} />
+      </div>
+
       {loading ? (
         <div className="text-center py-16 text-text-secondary text-sm">Loading bookings...</div>
       ) : (
@@ -677,18 +826,28 @@ export function AdminBookings() {
                 <tr className="border-b border-gray-50 bg-surface/50">
                   <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">School</th>
                   <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Company</th>
-                  <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Date</th>
+                  <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Start Date</th>
+                  <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">End Date</th>
                   <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filtered.length === 0
-                  ? <tr><td colSpan={4} className="text-center text-text-secondary text-sm py-10">No bookings found</td></tr>
+                  ? <tr><td colSpan={5} className="text-center text-text-secondary text-sm py-10">No bookings found</td></tr>
                   : filtered.map(b => (
-                    <tr key={b.id} className="hover:bg-surface/50 transition-colors">
-                      <td className="px-6 py-4 text-sm text-text-primary">{b.school_id}</td>
-                      <td className="px-6 py-4 text-sm text-text-secondary">{b.company_id}</td>
-                      <td className="px-6 py-4 text-sm font-mono text-text-secondary">{b.date}</td>
+                    <tr key={b.booking_id} className="hover:bg-surface/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <p className="font-semibold text-sm text-text-primary">{b.school_name}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm text-text-secondary">{b.company_name}</p>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-mono text-text-secondary">
+                        {new Date(b.start_date).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-mono text-text-secondary">
+                        {new Date(b.end_date).toLocaleDateString()}
+                      </td>
                       <td className="px-6 py-4"><StatusBadge status={b.status} /></td>
                     </tr>
                   ))}
