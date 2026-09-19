@@ -57,6 +57,7 @@ const companySidebarLinks = [
   { to: '/company/profile', label: 'My Profile', icon: User },
   { to: '/company/slots', label: 'Internship Slots', icon: Briefcase },
   { to: '/company/bookings', label: 'Bookings', icon: BookOpen },
+  { to: '/company/schools', label: 'Schools ', icon: GraduationCap },
   { to: '/company/settings', label: 'Settings', icon: Settings },
 ]
 const schoolSidebarLinks = [
