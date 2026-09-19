@@ -51,27 +51,33 @@ export default function SlotDetail() {
         <ArrowLeft size={16} /> Back to Browse
       </Link>
 
-      <div className="max-w-2xl grid gap-6">
+      <div className="max-w-2xl mx-auto grid gap-6">
         {/* Company Card */}
-        <div className="card p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center flex-shrink-0 text-primary font-display text-2xl font-bold">
-              {slot.company_name.charAt(0)}
-            </div>
-            <div>
-              <h2 className="font-display font-bold text-text-primary text-xl">{slot.company_name}</h2>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs bg-green-50 text-green-700 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <CheckCircle size={10} /> Verified
-                </span>
-                <span className="text-text-secondary text-xs">{slot.industry_type || 'General'}</span>
-              </div>
-            </div>
+      <div className="card p-6">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center flex-shrink-0 text-primary font-display text-2xl font-bold">
+            {slot.company_name.charAt(0)}
           </div>
-          <div className="flex items-center gap-2 text-text-secondary text-sm">
-            <MapPin size={14} /> {slot.company_address} · {slot.region}
+          <div>
+            <h2 className="font-display font-bold text-text-primary text-xl">{slot.company_name}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs bg-green-50 text-green-700 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <CheckCircle size={10} /> Verified
+              </span>
+              <span className="text-text-secondary text-xs">{slot.industry_type || 'General'}</span>
+            </div>
           </div>
         </div>
+        <div className="flex items-center gap-2 text-text-secondary text-sm mb-4">
+          <MapPin size={14} /> {slot.company_address} · {slot.region}
+        </div>
+        {/* Company description in the company card */}
+        {slot.company_description && (
+          <p className="text-sm text-text-secondary leading-relaxed border-t border-gray-100 pt-4">
+            {slot.company_description}
+          </p>
+        )}
+      </div>
 
         {/* Slot Details */}
         <div className="card p-6">
