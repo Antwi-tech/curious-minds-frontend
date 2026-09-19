@@ -58,7 +58,7 @@ export default function ChangePassword({ role = 'company' }) {
           </div>
           <h2 className="font-display text-xl font-bold text-text-primary mb-1">Update your password</h2>
           <p className="text-text-secondary text-sm mb-6">For your security, choose a strong, unique password.</p>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             {fields.map(({ key, label, hint }) => (
               <div key={key}>
                 <label className="label">{label}</label>
