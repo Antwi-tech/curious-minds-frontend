@@ -34,22 +34,32 @@ export default function SchoolDashboard() {
   const cancelledBookings = bookings.filter(b => b.status === 'cancelled');
   const recentBookings = bookings.slice(0, 5);
 
-  return (
+  return ( 
     <DashboardLayout role="school" userName={user.school_name || 'School'} title="Dashboard">
       {/* Welcome Banner */}
-      <div className="gradient-hero rounded-3xl p-8 mb-8 relative overflow-hidden animate-fade-in-up">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #F4A623 0px, #F4A623 2px, transparent 2px, transparent 20px)' }} />
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="gradient-hero rounded-3xl p-10 mb-8 relative overflow-hidden animate-fade-in-up">
+        <div className="absolute inset-0 opacity-5" style={{
+          backgroundImage: `repeating-linear-gradient(45deg, #F4A623 0px, #F4A623 4px, transparent 4px, transparent 28px), repeating-linear-gradient(-45deg, #F4A623 0px, #F4A623 4px, transparent 4px, transparent 28px)`
+        }} />
+        <div className="absolute right-8 top-1/2 -translate-y-1/2 font-display text-[180px] font-bold text-white/5 select-none leading-none">
+          CM
+        </div>
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div>
+            <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-1.5 mb-4">
+              <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+              <span className="text-white/80 text-xs font-medium">Active Account</span>
+            </div>
             <p className="text-white/70 text-sm font-medium mb-1">Welcome back </p>
-            <h2 className="font-display text-3xl font-bold text-white mb-2">{user.school_name || '...'}</h2>
+            <h2 className="font-display text-4xl font-bold text-white mb-2">{user.school_name || '...'}</h2>
             <p className="text-white/60 text-sm">{user.region}</p>
           </div>
-          <Link to="/school/browse" className="btn-primary whitespace-nowrap">
+          <Link to="/school/browse" className="btn-primary whitespace-nowrap self-start sm:self-center">
             <Search size={16} /> Find Internships
           </Link>
         </div>
       </div>
+
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
