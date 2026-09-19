@@ -16,6 +16,7 @@ import CreateSlot from './pages/company/CreateSlot'
 import CompanyBookings from './pages/company/Bookings'
 import CompanyBookingDetail from './pages/company/BookingDetail'
 import ChangePassword from './pages/company/ChangePassword'
+import SchoolsDirectory from './pages/company/SchoolsDirectory'
 
 // School pages
 import SchoolDashboard from './pages/school/Dashboard'
@@ -27,8 +28,9 @@ import SchoolChangePassword from './pages/school/ChangePassword'
 import SlotDetail from './pages/school/SlotDetail'
 import SchoolBookingDetail from './pages/school/BookingDetail'
 
-// Admin pages
+
 import { AdminDashboard, AdminCompanies, AdminCompanyDetail, AdminSchools, AdminSchoolDetail, AdminBookings, AdminSettings } from './pages/admin/AdminPages'
+import AdminLogin from './pages/public/AdminLogin'
 
 export default function App() {
   return (
@@ -37,6 +39,7 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/register-company" element={<RegisterCompany />} />
         <Route path="/register-school" element={<RegisterSchool />} />
         <Route path="/pending-approval" element={<PendingApproval />} />
@@ -50,6 +53,7 @@ export default function App() {
         <Route path="/company/bookings" element={<ProtectedRoute allowedRole="company"><CompanyBookings /></ProtectedRoute>} />
         <Route path="/company/booking/:id" element={<ProtectedRoute allowedRole="company"><CompanyBookingDetail /></ProtectedRoute>} />
         <Route path="/company/settings" element={<ProtectedRoute allowedRole="company"><ChangePassword role="company" /></ProtectedRoute>} />
+        <Route path="/company/schools" element={<ProtectedRoute allowedRole="company"><SchoolsDirectory /></ProtectedRoute>} />
 
         {/* School - protected */}
         <Route path="/school/dashboard" element={<ProtectedRoute allowedRole="school"><SchoolDashboard /></ProtectedRoute>} />
