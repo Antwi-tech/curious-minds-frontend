@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, X, ChevronDown, Filter, MapPin, Calendar, Building2 } from "lucide-react";
+import { Search, X, ChevronDown, Filter, MapPin, Calendar, CheckCircle } from "lucide-react";
 import { DashboardLayout, Toast, EmptyState } from "../../components/Shared";
 import { ghanaRegions } from "../../data/mockData";
-import { getSchoolAvailableSlots } from "../../api";
+import { getSchoolAvailableSlots, getSchoolBookings } from "../../api";
 
 const getStoredUser = () => {
   try { return JSON.parse(localStorage.getItem('user')) || {} }
@@ -14,6 +14,7 @@ export default function BrowseOpportunities() {
   const navigate = useNavigate();
   const user = getStoredUser();
   const [slots, setSlots] = useState([]);
+  const [bookedScheduleIds, setBookedScheduleIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({ region: "", dateFrom: "", dateTo: "" });
@@ -22,17 +23,33 @@ export default function BrowseOpportunities() {
   const setF = k => e => setFilters({ ...filters, [k]: e.target.value });
 
   useEffect(() => {
-    const fetchSlots = async () => {
+    const fetchData = async () => {
       try {
-        const res = await getSchoolAvailableSlots();
-        setSlots(res.data.slots || []);
+        // Fetch slots and existing bookings at the same time
+        const [slotsRes, bookingsRes] = await Promise.all([
+          getSchoolAvailableSlots(),
+          getSchoolBookings(),
+        ]);
+
+        setSlots(slotsRes.data.slots || []);
+
+        // Build a Set of schedule_ids that this school has
+        // already booked with a confirmed or pending status
+        const existingBookings = bookingsRes.data.bookings || [];
+        const bookedIds = new Set(
+          existingBookings
+            .filter(b => b.status === 'confirmed' || b.status === 'pending')
+            .map(b => b.schedule_id)
+        );
+        setBookedScheduleIds(bookedIds);
+
       } catch {
         setToast({ message: 'Failed to load slots', type: 'error' });
       } finally {
         setLoading(false);
       }
     };
-    fetchSlots();
+    fetchData();
   }, []);
 
   const filtered = slots.filter(s => {
@@ -49,6 +66,7 @@ export default function BrowseOpportunities() {
 
   return (
     <DashboardLayout role="school" userName={user.school_name || 'School'} title="Browse Opportunities">
+
       {/* Search */}
       <div className="flex gap-3 mb-4">
         <div className="relative flex-1">
@@ -69,7 +87,7 @@ export default function BrowseOpportunities() {
 
       {/* Filter Panel */}
       {showFilters && (
-        <div className="card mb-6 grid sm:grid-cols-3 gap-4">
+        <div className="card p-5 mb-6 grid sm:grid-cols-3 gap-4">
           <div>
             <label className="label">Region</label>
             <div className="relative">
@@ -95,49 +113,76 @@ export default function BrowseOpportunities() {
         </div>
       )}
 
-      <p className="text-text-secondary text-sm mb-4">{loading ? 'Loading...' : `${filtered.length} opportunities available`}</p>
+      <p className="text-text-secondary text-sm mb-6">
+        {loading ? 'Loading...' : `${filtered.length} opportunit${filtered.length === 1 ? 'y' : 'ies'} available`}
+      </p>
 
       {loading ? (
         <div className="text-center py-16 text-text-secondary text-sm">Loading opportunities...</div>
       ) : filtered.length === 0 ? (
         <EmptyState icon={Search} title="No slots found" desc="Try adjusting your search or filters." />
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(slot => (
-            <div key={slot.schedule_id} className="card p-6 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/school/slot/${slot.schedule_id}`)}>
-              {/* Company initial avatar */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-display text-xl font-bold">
-                  {slot.company_name.charAt(0)}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filtered.map(slot => {
+            const isBooked = bookedScheduleIds.has(slot.schedule_id);
+            return (
+              <div
+                key={slot.schedule_id}
+                className="card p-0 overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                onClick={() => !isBooked && navigate(`/school/slot/${slot.schedule_id}`)}>
+
+                {/* Colored top strip — green if booked, primary if not */}
+                <div className={`h-2 w-full ${isBooked ? 'bg-green-500' : 'bg-primary'}`} />
+
+                <div className="p-6">
+                  {/* Company avatar + industry badge */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white font-display text-xl font-bold">
+                      {slot.company_name.charAt(0)}
+                    </div>
+                    <span className="text-xs bg-accent/20 text-amber-800 font-semibold px-3 py-1 rounded-full">
+                      {slot.industry_type || 'General'}
+                    </span>
+                  </div>
+
+                  <h3 className="font-display font-bold text-text-primary text-lg mb-1 group-hover:text-primary transition-colors">
+                    {slot.company_name}
+                  </h3>
+
+                  <div className="flex items-center gap-1 text-xs text-text-secondary mb-4">
+                    <MapPin size={12} />
+                    <span>{slot.region}</span>
+                  </div>
+
+                  {/* Date range pill */}
+                  <div className="bg-surface rounded-xl p-3 mb-5">
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                      <Calendar size={12} className="text-primary flex-shrink-0" />
+                      <span className="font-mono">{new Date(slot.start_date).toLocaleDateString()}</span>
+                      <span>→</span>
+                      <span className="font-mono">{new Date(slot.end_date).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Button — changes based on booking status */}
+                  {isBooked ? (
+                    <button
+                      disabled
+                      className="w-full justify-center text-sm py-2.5 inline-flex items-center gap-2 bg-green-50 text-green-700 font-semibold rounded-xl border-2 border-green-200 cursor-not-allowed">
+                      <CheckCircle size={16} />
+                      Slot Booked
+                    </button>
+                  ) : (
+                    <button
+                      onClick={e => { e.stopPropagation(); navigate(`/school/book/${slot.schedule_id}`); }}
+                      className="btn-secondary w-full justify-center text-sm py-2.5">
+                      Book This Slot
+                    </button>
+                  )}
                 </div>
-                <span className="text-xs bg-accent/20 text-amber-700 font-semibold px-2 py-1 rounded-lg">
-                  {slot.industry_type || 'General'}
-                </span>
               </div>
-
-              <h3 className="font-display font-bold text-text-primary text-base mb-1">{slot.company_name}</h3>
-
-              <div className="flex items-center gap-1 text-xs text-text-secondary mb-2">
-                <MapPin size={12} /> {slot.region}
-              </div>
-
-              <div className="flex items-center gap-1 text-xs text-text-secondary mb-1">
-                <Calendar size={12} />
-                <span>From {new Date(slot.start_date).toLocaleDateString()}</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-text-secondary mb-4">
-                <Calendar size={12} />
-                <span>To {new Date(slot.end_date).toLocaleDateString()}</span>
-              </div>
-
-              <button
-                onClick={e => { e.stopPropagation(); navigate(`/school/book/${slot.schedule_id}`); }}
-                className="btn-secondary w-full justify-center text-sm py-2">
-                Book This Slot
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
