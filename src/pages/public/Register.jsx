@@ -2,10 +2,69 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Logo } from '../../components/Shared'
 import { ghanaRegions } from '../../data/mockData'
-import { Eye, EyeOff, ArrowRight, Building2 } from 'lucide-react'
-import { registerCompany, registerSchool } from '../../api'
-import { GraduationCap } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight, Building2, GraduationCap, Expand, X, Check } from 'lucide-react'
+import { registerCompany, registerSchool, generateCompanyDescription, generateSchoolDescription } from '../../api'
 
+// ─── Description Edit Modal ───────────────────────────────────────────────────
+function DescriptionModal({ value, onChange, onClose, label }) {
+  const [draft, setDraft] = useState(value)
+
+  const handleSave = () => {
+    onChange(draft)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h3 className="font-semibold text-text-primary">{label}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-text-secondary hover:text-text-primary transition-colors p-1 rounded-lg hover:bg-gray-100">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Textarea */}
+        <div className="px-6 py-4">
+          <textarea
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            rows={10}
+            autoFocus
+            placeholder={`Write your ${label.toLowerCase()} here...`}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
+          />
+          <p className="text-xs text-text-secondary mt-1">{draft.length} characters</p>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-text-secondary hover:bg-gray-50 transition-colors">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors flex items-center justify-center gap-2">
+            <Check size={15} />
+            Save Description
+          </button>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+// ─── Password Field ───────────────────────────────────────────────────────────
 function PasswordField({ value, onChange, label, error, placeholder }) {
   const [show, setShow] = useState(false)
   return (
@@ -23,28 +82,59 @@ function PasswordField({ value, onChange, label, error, placeholder }) {
   )
 }
 
+// ─── Register Company ─────────────────────────────────────────────────────────
 export function RegisterCompany() {
   const navigate = useNavigate()
   const [form, setForm] = useState({
-    company_name: '',
-    industry_type: '',
-    email: '',
-    phone_number: '',
-    company_address: '',
-    region: '',
-    contact_person: '',
-    description: '',
-    website: '',
-    password: '',
-    confirm: ''
+    company_name: '', industry_type: '', email: '', phone_number: '',
+    company_address: '', region: '', contact_person: '', description: '',
+    website: '', password: '', confirm: ''
   })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [serverError, setServerError] = useState('')
+  const [generateError, setGenerateError] = useState('')
+  const [showModal, setShowModal] = useState(false)
 
   const industries = ['Banking & Finance', 'Telecommunications', 'Manufacturing / FMCG', 'Information Technology', 'Healthcare', 'Media & Communications', 'Oil & Gas', 'Education', 'Retail & Commerce', 'Agriculture', 'Construction', 'Hospitality & Tourism', 'NGO / Civil Society', 'Government / Public Sector']
 
   const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+
+  const handleGenerateDescription = async (ev) => {
+    ev.preventDefault()
+    if (!form.company_name) {
+      setGenerateError('Please enter a company name first')
+      return
+    }
+    setGenerateError('')
+    setGenerating(true)
+    try {
+      const res = await generateCompanyDescription({
+        company_name: form.company_name,
+        industry_type: form.industry_type,
+        region: form.region,
+      })
+      setForm(p => ({ ...p, description: res.data.description }))
+    } catch (err) {
+      const data = err.response?.data
+      if (data?.action === 'block') {
+        setGenerateError(
+          `"${form.company_name}" does not appear to be a recognised organisation. Please check that you have entered a valid company name and try again.`
+        )
+      } else if (data?.success === false && !data?.flagged) {
+        setGenerateError(
+          'There is not enough information to write a description. Feel free to write one yourself below.'
+        )
+      } else {
+        setGenerateError(
+          'Our AI could not generate a description at this time. You can write one yourself below.'
+        )
+      }
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   const validate = () => {
     const e = {}
@@ -70,24 +160,15 @@ export function RegisterCompany() {
     setLoading(true)
     try {
       await registerCompany({
-        company_name: form.company_name,
-        email: form.email,
-        password: form.password,
-        contact_person: form.contact_person,
-        phone_number: form.phone_number,
-        company_address: form.company_address,
-        region: form.region,
-        description: form.description,
-        industry_type: form.industry_type,
+        company_name: form.company_name, email: form.email, password: form.password,
+        contact_person: form.contact_person, phone_number: form.phone_number,
+        company_address: form.company_address, region: form.region,
+        description: form.description, industry_type: form.industry_type,
         website: form.website || undefined,
       })
       navigate('/pending-approval')
     } catch (err) {
-      if (err.response?.data?.error) {
-        setServerError(err.response.data.error)
-      } else {
-        setServerError('Something went wrong. Please try again.')
-      }
+      setServerError(err.response?.data?.error || 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -95,10 +176,20 @@ export function RegisterCompany() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {showModal && (
+        <DescriptionModal
+          value={form.description}
+          onChange={desc => setForm(p => ({ ...p, description: desc }))}
+          onClose={() => setShowModal(false)}
+          label="Company Description"
+        />
+      )}
+
       <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
         <Logo />
         <Link to="/login" className="text-sm text-text-secondary hover:text-primary">Already registered? Sign in</Link>
       </nav>
+
       <div className="flex-1 flex items-center justify-center p-6 py-12">
         <div className="w-full max-w-2xl">
           <div className="text-center mb-8">
@@ -116,7 +207,7 @@ export function RegisterCompany() {
           )}
 
           <form onSubmit={handleSubmit} className="card p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <label className="label">Company Name</label>
                 <input value={form.company_name} onChange={set('company_name')} placeholder="e.g. Ecobank Ghana" className={`input-field ${errors.company_name ? 'border-red-300' : ''}`} />
@@ -162,11 +253,45 @@ export function RegisterCompany() {
                 <label className="label">Website <span className="text-text-secondary font-normal">(optional)</span></label>
                 <input value={form.website} onChange={set('website')} placeholder="e.g. https://yourcompany.com.gh" className="input-field" />
               </div>
+
+              {/* Description with AI Generate + Expand buttons */}
               <div className="md:col-span-2">
-                <label className="label">Company Description</label>
-                <textarea value={form.description} onChange={set('description')} rows={3} placeholder="Briefly describe what your company does and what interns can expect..." className={`input-field resize-none ${errors.description ? 'border-red-300' : ''}`} />
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <label className="label mb-0">Company Description</label>
+                    {/* Expand/edit icon — opens modal */}
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(true)}
+                      title="Edit in full screen"
+                      className="text-text-secondary hover:text-primary transition-colors p-1 rounded-lg hover:bg-primary/5">
+                      <Expand size={14} />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateDescription}
+                    disabled={generating}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-dark transition-colors disabled:opacity-50 bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-lg">
+                    {generating ? (
+                      <>
+                        <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        Generating...
+                      </>
+                    ) : <>✨ Generate with AI</>}
+                  </button>
+                </div>
+                {generateError && <p className="text-xs text-amber-600 mb-1.5">{generateError}</p>}
+                <textarea
+                  value={form.description}
+                  onChange={set('description')}
+                  rows={3}
+                  placeholder="Briefly describe your company or click Generate with AI above"
+                  className={`input-field resize-none ${errors.description ? 'border-red-300' : ''}`}
+                />
                 {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
               </div>
+
               <PasswordField value={form.password} onChange={set('password')} label="Password" error={errors.password} />
               <PasswordField value={form.confirm} onChange={set('confirm')} label="Confirm Password" error={errors.confirm} />
             </div>
@@ -184,25 +309,56 @@ export function RegisterCompany() {
   )
 }
 
+// ─── Register School ──────────────────────────────────────────────────────────
 export function RegisterSchool() {
   const navigate = useNavigate()
   const [form, setForm] = useState({
-    school_name: '',
-    type: '',
-    email: '',
-    phone_number: '',
-    school_address: '',
-    region: '',
-    contact_person: '',
-    description: '',
-    website: '',
-    password: '',
-    confirm: ''
+    school_name: '', type: '', email: '', phone_number: '',
+    school_address: '', region: '', contact_person: '', description: '',
+    website: '', password: '', confirm: ''
   })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [serverError, setServerError] = useState('')
+  const [generateError, setGenerateError] = useState('')
+  const [showModal, setShowModal] = useState(false)
+
   const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+
+  const handleGenerateDescription = async (ev) => {
+    ev.preventDefault()
+    if (!form.school_name) {
+      setGenerateError('Please enter a school name first')
+      return
+    }
+    setGenerateError('')
+    setGenerating(true)
+    try {
+      const res = await generateSchoolDescription({
+        school_name: form.school_name,
+        region: form.region,
+      })
+      setForm(p => ({ ...p, description: res.data.description }))
+    } catch (err) {
+      const data = err.response?.data
+      if (data?.action === 'block') {
+        setGenerateError(
+          `"${form.school_name}" does not appear to be a recognised school. Please check that you have entered a valid school name and try again.`
+        )
+      } else if (data?.success === false && !data?.flagged) {
+        setGenerateError(
+          'We found your school but could not gather enough information to write a description. Feel free to write one yourself below.'
+        )
+      } else {
+        setGenerateError(
+          'Our AI could not generate a description at this time. You can write one yourself below.'
+        )
+      }
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   const validate = () => {
     const e = {}
@@ -228,23 +384,14 @@ export function RegisterSchool() {
     setLoading(true)
     try {
       await registerSchool({
-        school_name: form.school_name,
-        email: form.email,
-        password: form.password,
-        school_address: form.school_address,
-        region: form.region,
-        contact_person: form.contact_person,
-        phone_number: form.phone_number,
-        description: form.description,
-        website: form.website || undefined,
-    })
+        school_name: form.school_name, email: form.email, password: form.password,
+        school_address: form.school_address, region: form.region,
+        contact_person: form.contact_person, phone_number: form.phone_number,
+        description: form.description, website: form.website || undefined,
+      })
       navigate('/pending-approval')
     } catch (err) {
-      if (err.response?.data?.error) {
-        setServerError(err.response.data.error)
-      } else {
-        setServerError('Something went wrong. Please try again.')
-      }
+      setServerError(err.response?.data?.error || 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -252,10 +399,20 @@ export function RegisterSchool() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {showModal && (
+        <DescriptionModal
+          value={form.description}
+          onChange={desc => setForm(p => ({ ...p, description: desc }))}
+          onClose={() => setShowModal(false)}
+          label="School Description"
+        />
+      )}
+
       <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
         <Logo />
         <Link to="/login" className="text-sm text-text-secondary hover:text-primary">Already registered? Sign in</Link>
       </nav>
+
       <div className="flex-1 flex items-center justify-center p-6 py-12">
         <div className="w-full max-w-2xl">
           <div className="text-center mb-8">
@@ -273,7 +430,7 @@ export function RegisterSchool() {
           )}
 
           <form onSubmit={handleSubmit} className="card p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <label className="label">School Name</label>
                 <input value={form.school_name} onChange={set('school_name')} placeholder="e.g. Achimota Senior High School" className={`input-field ${errors.school_name ? 'border-red-300' : ''}`} />
@@ -323,11 +480,45 @@ export function RegisterSchool() {
                 <label className="label">Website <span className="text-text-secondary font-normal">(optional)</span></label>
                 <input value={form.website} onChange={set('website')} placeholder="e.g. https://yourschool.edu.gh" className="input-field" />
               </div>
+
+              {/* Description with AI Generate + Expand buttons */}
               <div className="md:col-span-2">
-                <label className="label">School Description</label>
-                <textarea value={form.description} onChange={set('description')} rows={3} placeholder="Briefly describe your school and what students can expect from internships..." className={`input-field resize-none ${errors.description ? 'border-red-300' : ''}`} />
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <label className="label mb-0">School Description</label>
+                    {/* Expand/edit icon — opens modal */}
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(true)}
+                      title="Edit in full screen"
+                      className="text-text-secondary hover:text-primary transition-colors p-1 rounded-lg hover:bg-primary/5">
+                      <Expand size={14} />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateDescription}
+                    disabled={generating}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-dark transition-colors disabled:opacity-50 bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-lg">
+                    {generating ? (
+                      <>
+                        <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        Generating...
+                      </>
+                    ) : <>✨ Generate with AI</>}
+                  </button>
+                </div>
+                {generateError && <p className="text-xs text-amber-600 mb-1.5">{generateError}</p>}
+                <textarea
+                  value={form.description}
+                  onChange={set('description')}
+                  rows={3}
+                  placeholder="Briefly describe your school or click Generate with AI above"
+                  className={`input-field resize-none ${errors.description ? 'border-red-300' : ''}`}
+                />
                 {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
               </div>
+
               <PasswordField value={form.password} onChange={set('password')} label="Password" error={errors.password} />
               <PasswordField value={form.confirm} onChange={set('confirm')} label="Confirm Password" error={errors.confirm} />
             </div>
