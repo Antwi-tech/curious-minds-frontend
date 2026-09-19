@@ -62,7 +62,7 @@ export default function CompanyBookingDetail() {
             </div>
             <StatusBadge status={booking.status} />
           </div>
-          <div className="grid grid-cols-2 gap-5 mb-6">
+          <div className="grid grid-cols-2 gap-6 mb-6">
             {[
               ['School', booking.school_name],
               ['Email', booking.school_email],
