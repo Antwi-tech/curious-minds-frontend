@@ -87,7 +87,7 @@ export function AdminSettings() {
           </div>
           <h2 className="font-display text-xl font-bold text-text-primary mb-1">Change Password</h2>
           <p className="text-text-secondary text-sm mb-6">For your security, choose a strong unique password.</p>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             {fields.map(({ key, label, hint }) => (
               <div key={key}>
                 <label className="label">{label}</label>
@@ -267,7 +267,6 @@ export function AdminCompanies() {
     fetchCompanies()
   }, [])
 
-  // Derive status string from backend booleans
   const getStatus = (c) => {
     if (!c.is_active) return 'deactivated'
     if (!c.is_verified) return 'pending'
@@ -335,12 +334,13 @@ export function AdminCompanies() {
                   <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Industry</th>
                   <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Region</th>
                   <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Status</th>
+                  <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">AI Verdict</th>
                   <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filtered.length === 0
-                  ? <tr><td colSpan={5} className="text-center text-text-secondary text-sm py-10">No companies found</td></tr>
+                  ? <tr><td colSpan={6} className="text-center text-text-secondary text-sm py-10">No companies found</td></tr>
                   : filtered.map(c => (
                     <tr key={c.company_id} className="hover:bg-surface/50 transition-colors">
                       <td className="px-6 py-4">
@@ -350,6 +350,36 @@ export function AdminCompanies() {
                       <td className="px-6 py-4 text-sm text-text-secondary">{c.industry_type || '—'}</td>
                       <td className="px-6 py-4 text-sm text-text-secondary">{c.region}</td>
                       <td className="px-6 py-4"><StatusBadge status={getStatus(c)} /></td>
+
+                      {/* ── AI Verdict Column ── */}
+                      <td className="px-6 py-4">
+                        {c.ai_decision ? (
+                          <div>
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                              c.ai_decision === 'AUTO_APPROVE'
+                                ? 'bg-green-100 text-green-700'
+                                : c.ai_decision === 'RECOMMEND_APPROVE'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                              {c.ai_decision === 'AUTO_APPROVE' ? '✓ Auto Approved'
+                                : c.ai_decision === 'RECOMMEND_APPROVE' ? '~ Recommend Approve'
+                                : '⚠ Manual Review'}
+                            </span>
+                            <p className="text-xs text-text-secondary mt-1">
+                              {c.ai_confidence}% confidence
+                            </p>
+                            {c.ai_reasoning && (
+                              <p className="text-xs text-text-secondary mt-1 max-w-xs italic line-clamp-2">
+                                {c.ai_reasoning}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-text-secondary">Not analysed</span>
+                        )}
+                      </td>
+
                       <td className="px-6 py-4">
                         <div className="flex gap-2 flex-wrap">
                           <Link to={`/admin/company/${c.company_id}`} className="text-xs py-1.5 px-3 rounded-lg bg-gray-50 hover:bg-gray-100 text-text-secondary transition-colors font-medium inline-flex items-center gap-1">
@@ -407,18 +437,18 @@ export function AdminCompanyDetail() {
   }, [companyId])
 
   useEffect(() => {
-  const fetchBookings = async () => {
-    try {
-      const res = await adminGetCompanyBookings(companyId)
-      setCompanyBookings(res.data || [])
-    } catch {
-      console.error('Failed to load company bookings')
-    } finally {
-      setBookingsLoading(false)
+    const fetchBookings = async () => {
+      try {
+        const res = await adminGetCompanyBookings(companyId)
+        setCompanyBookings(res.data || [])
+      } catch {
+        console.error('Failed to load company bookings')
+      } finally {
+        setBookingsLoading(false)
+      }
     }
-  }
-  fetchBookings()
-}, [companyId])
+    fetchBookings()
+  }, [companyId])
 
   const getStatus = (c) => {
     if (!c.is_active) return 'deactivated'
@@ -456,12 +486,23 @@ export function AdminCompanyDetail() {
     }
   }
 
-  if (loading) return <DashboardLayout role="admin" userName="Admin" title="Company Detail"><div className="text-center py-16 text-text-secondary text-sm">Loading...</div></DashboardLayout>
-  if (!company) return <DashboardLayout role="admin" userName="Admin" title="Company Detail"><div className="text-center py-16 text-text-secondary text-sm">Company not found</div></DashboardLayout>
+  if (loading) return (
+    <DashboardLayout role="admin" userName="Admin" title="Company Detail">
+      <div className="text-center py-16 text-text-secondary text-sm">Loading...</div>
+    </DashboardLayout>
+  )
+
+  if (!company) return (
+    <DashboardLayout role="admin" userName="Admin" title="Company Detail">
+      <div className="text-center py-16 text-text-secondary text-sm">Company not found</div>
+    </DashboardLayout>
+  )
 
   return (
     <DashboardLayout role="admin" userName="Admin" title="Company Detail">
       <div className="max-w-3xl">
+
+        {/* ── Main Profile Card ── */}
         <div className="card p-8 mb-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -475,7 +516,8 @@ export function AdminCompanyDetail() {
             </div>
             <StatusBadge status={getStatus(company)} />
           </div>
-          <div className="grid grid-cols-2 gap-5 mb-6">
+
+          <div className="grid grid-cols-2 gap-6 mb-6">
             {[
               ['Email', company.email],
               ['Phone', company.phone_number],
@@ -490,12 +532,32 @@ export function AdminCompanyDetail() {
               </div>
             ))}
           </div>
+
           {company.description && (
             <div className="bg-surface rounded-xl p-4 mb-6">
               <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">About</p>
               <p className="text-text-primary text-sm">{company.description}</p>
             </div>
           )}
+
+          {/* ── AI Verification Result ── */}
+          {company.ai_decision && (
+            <div className={`rounded-xl p-4 mb-6 border ${
+              company.ai_decision === 'AUTO_APPROVE' ? 'bg-green-50 border-green-200' :
+              company.ai_decision === 'RECOMMEND_APPROVE' ? 'bg-amber-50 border-amber-200' :
+              'bg-red-50 border-red-200'
+            }`}>
+              <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${
+                company.ai_decision === 'AUTO_APPROVE' ? 'text-green-700' :
+                company.ai_decision === 'RECOMMEND_APPROVE' ? 'text-amber-700' :
+                'text-red-700'
+              }`}>
+                🤖 AI Verification — {company.ai_confidence}% Confidence
+              </p>
+              <p className="text-sm text-text-primary">{company.ai_reasoning}</p>
+            </div>
+          )}
+
           <div className="flex gap-3">
             {!company.is_verified && company.is_active && (
               <button onClick={handleVerify} className="btn-secondary gap-2">
@@ -513,33 +575,349 @@ export function AdminCompanyDetail() {
           </div>
         </div>
 
-          <div className="card">
-      <div className="p-6 border-b border-gray-50">
-        <h3 className="section-title text-base">Booking History</h3>
-      </div>
-      <div className="divide-y divide-gray-50">
-        {bookingsLoading ? (
-          <p className="text-center text-text-secondary text-sm py-8">Loading...</p>
-        ) : companyBookings.length === 0 ? (
-          <p className="text-center text-text-secondary text-sm py-8">No bookings yet</p>
-        ) : companyBookings.map(b => (
-          <div key={b.booking_id} className="px-6 py-4 flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-sm text-text-primary">{b.school_name}</p>
-              <p className="text-xs text-text-secondary font-mono">
-                {new Date(b.start_date).toLocaleDateString()} → {new Date(b.end_date).toLocaleDateString()}
-              </p>
-            </div>
-            <StatusBadge status={b.status} />
+        {/* ── Booking History Card ── */}
+        <div className="card">
+          <div className="p-6 border-b border-gray-50">
+            <h3 className="section-title text-base">Booking History</h3>
           </div>
-      ))}
-    </div>
-</div>
+          <div className="divide-y divide-gray-50">
+            {bookingsLoading ? (
+              <p className="text-center text-text-secondary text-sm py-8">Loading...</p>
+            ) : companyBookings.length === 0 ? (
+              <p className="text-center text-text-secondary text-sm py-8">No bookings yet</p>
+            ) : companyBookings.map(b => (
+              <div key={b.booking_id} className="px-6 py-4 flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-sm text-text-primary">{b.school_name}</p>
+                  <p className="text-xs text-text-secondary font-mono">
+                    {new Date(b.start_date).toLocaleDateString()} → {new Date(b.end_date).toLocaleDateString()}
+                  </p>
+                </div>
+                <StatusBadge status={b.status} />
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
     </DashboardLayout>
   )
 }
+
+
+// ─── Admin School Detail ──────────────────────────────────────────────────────
+export function AdminSchoolDetail() {
+  const [school, setSchool] = useState(null)
+  const [schoolBookings, setSchoolBookings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [bookingsLoading, setBookingsLoading] = useState(true)
+  const [toast, setToast] = useState(null)
+  const schoolId = window.location.pathname.split('/').pop()
+
+  useEffect(() => {
+    const fetchSchool = async () => {
+      try {
+        const res = await adminGetAllSchools()
+        const found = (res.data.schools || []).find(s => String(s.school_id) === String(schoolId))
+        setSchool(found || null)
+      } catch {
+        setToast({ message: 'Failed to load school', type: 'error' })
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchSchool()
+  }, [schoolId])
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const res = await adminGetSchoolBookings(schoolId)
+        setSchoolBookings(res.data || [])
+      } catch {
+        console.error('Failed to load school bookings')
+      } finally {
+        setBookingsLoading(false)
+      }
+    }
+    fetchBookings()
+  }, [schoolId])
+
+  const getStatus = (s) => {
+    if (!s.is_active) return 'deactivated'
+    if (!s.is_verified) return 'pending'
+    return 'verified'
+  }
+
+  const handleVerify = async () => {
+    try {
+      await adminVerifySchool(school.school_id)
+      setSchool(prev => ({ ...prev, is_verified: true }))
+      setToast({ message: 'School verified!', type: 'success' })
+    } catch {
+      setToast({ message: 'Failed to verify', type: 'error' })
+    }
+  }
+
+  if (loading) return (
+    <DashboardLayout role="admin" userName="Admin" title="School Detail">
+      <div className="text-center py-16 text-text-secondary text-sm">Loading...</div>
+    </DashboardLayout>
+  )
+
+  if (!school) return (
+    <DashboardLayout role="admin" userName="Admin" title="School Detail">
+      <div className="text-center py-16 text-text-secondary text-sm">School not found</div>
+    </DashboardLayout>
+  )
+
+  return (
+    <DashboardLayout role="admin" userName="Admin" title="School Detail">
+      <div className="max-w-3xl">
+
+        {/* ── Main Profile Card ── */}
+        <div className="card p-8 mb-6">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-accent/20 flex items-center justify-center text-3xl">🏫</div>
+              <div>
+                <h2 className="font-display text-xl font-bold text-text-primary">{school.school_name}</h2>
+                <p className="text-text-secondary text-sm">{school.school_type} · {school.region}</p>
+              </div>
+            </div>
+            <StatusBadge status={getStatus(school)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            {[
+              ['Email', school.email],
+              ['Phone', school.phone_number],
+              ['Region', school.region],
+              ['Address', school.school_address || '—'],
+            ].map(([l, v]) => (
+              <div key={l}>
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">{l}</p>
+                <p className="text-text-primary font-medium text-sm">{v}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* ── AI Verification Result ── */}
+          {school.ai_decision && (
+            <div className={`rounded-xl p-4 mb-6 border ${
+              school.ai_decision === 'AUTO_APPROVE' ? 'bg-green-50 border-green-200' :
+              school.ai_decision === 'RECOMMEND_APPROVE' ? 'bg-amber-50 border-amber-200' :
+              'bg-red-50 border-red-200'
+            }`}>
+              <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${
+                school.ai_decision === 'AUTO_APPROVE' ? 'text-green-700' :
+                school.ai_decision === 'RECOMMEND_APPROVE' ? 'text-amber-700' :
+                'text-red-700'
+              }`}>
+                🤖 AI Verification — {school.ai_confidence}% Confidence
+              </p>
+              <p className="text-sm text-text-primary">{school.ai_reasoning}</p>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            {!school.is_verified && school.is_active && (
+              <button onClick={handleVerify} className="btn-secondary gap-2">
+                <CheckCircle size={16} /> Verify School
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── Booking History Card ── */}
+        <div className="card">
+          <div className="p-6 border-b border-gray-50">
+            <h3 className="section-title text-base">Booking History</h3>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {bookingsLoading ? (
+              <p className="text-center text-text-secondary text-sm py-8">Loading...</p>
+            ) : schoolBookings.length === 0 ? (
+              <p className="text-center text-text-secondary text-sm py-8">No bookings yet</p>
+            ) : schoolBookings.map(b => (
+              <div key={b.booking_id} className="px-6 py-4 flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-sm text-text-primary">{b.company_name}</p>
+                  <p className="text-xs text-text-secondary font-mono">
+                    {new Date(b.start_date).toLocaleDateString()} → {new Date(b.end_date).toLocaleDateString()}
+                  </p>
+                </div>
+                <StatusBadge status={b.status} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    </DashboardLayout>
+  )
+}
+
+// // ─── Admin Company Detail ─────────────────────────────────────────────────────
+// export function AdminCompanyDetail() {
+//   const [company, setCompany] = useState(null)
+//   const [companyBookings, setCompanyBookings] = useState([])
+//   const [loading, setLoading] = useState(true)
+//   const [bookingsLoading, setBookingsLoading] = useState(true)
+//   const [toast, setToast] = useState(null)
+//   const companyId = window.location.pathname.split('/').pop()
+
+//   useEffect(() => {
+//     const fetchCompany = async () => {
+//       try {
+//         const res = await adminGetAllCompanies()
+//         const found = (res.data.companies || []).find(c => String(c.company_id) === String(companyId))
+//         setCompany(found || null)
+//       } catch {
+//         setToast({ message: 'Failed to load company', type: 'error' })
+//       } finally {
+//         setLoading(false)
+//       }
+//     }
+//     fetchCompany()
+//   }, [companyId])
+
+//   useEffect(() => {
+//   const fetchBookings = async () => {
+//     try {
+//       const res = await adminGetCompanyBookings(companyId)
+//       setCompanyBookings(res.data || [])
+//     } catch {
+//       console.error('Failed to load company bookings')
+//     } finally {
+//       setBookingsLoading(false)
+//     }
+//   }
+//   fetchBookings()
+// }, [companyId])
+
+//   const getStatus = (c) => {
+//     if (!c.is_active) return 'deactivated'
+//     if (!c.is_verified) return 'pending'
+//     return 'verified'
+//   }
+
+//   const handleVerify = async () => {
+//     try {
+//       await adminVerifyCompany(company.company_id)
+//       setCompany(prev => ({ ...prev, is_verified: true }))
+//       setToast({ message: 'Company verified!', type: 'success' })
+//     } catch {
+//       setToast({ message: 'Failed to verify', type: 'error' })
+//     }
+//   }
+
+//   const handleDeactivate = async () => {
+//     try {
+//       await adminDeactivateCompany(company.company_id)
+//       setCompany(prev => ({ ...prev, is_active: false }))
+//       setToast({ message: 'Company deactivated', type: 'info' })
+//     } catch {
+//       setToast({ message: 'Failed to deactivate', type: 'error' })
+//     }
+//   }
+
+//   const handleActivate = async () => {
+//     try {
+//       await adminActivateCompany(company.company_id)
+//       setCompany(prev => ({ ...prev, is_active: true }))
+//       setToast({ message: 'Company reactivated!', type: 'success' })
+//     } catch {
+//       setToast({ message: 'Failed to activate', type: 'error' })
+//     }
+//   }
+
+//   if (loading) return <DashboardLayout role="admin" userName="Admin" title="Company Detail"><div className="text-center py-16 text-text-secondary text-sm">Loading...</div></DashboardLayout>
+//   if (!company) return <DashboardLayout role="admin" userName="Admin" title="Company Detail"><div className="text-center py-16 text-text-secondary text-sm">Company not found</div></DashboardLayout>
+
+//   return (
+//     <DashboardLayout role="admin" userName="Admin" title="Company Detail">
+//       <div className="max-w-3xl">
+//         <div className="card p-8 mb-6">
+//           <div className="flex items-start justify-between mb-6">
+//             <div className="flex items-center gap-4">
+//               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-display text-2xl font-bold">
+//                 {company.company_name.charAt(0)}
+//               </div>
+//               <div>
+//                 <h2 className="font-display text-xl font-bold text-text-primary">{company.company_name}</h2>
+//                 <p className="text-text-secondary text-sm">{company.industry_type} · {company.region}</p>
+//               </div>
+//             </div>
+//             <StatusBadge status={getStatus(company)} />
+//           </div>
+//           <div className="grid grid-cols-2 gap-6 mb-6">
+//             {[
+//               ['Email', company.email],
+//               ['Phone', company.phone_number],
+//               ['Address', company.company_address],
+//               ['Contact Person', company.contact_person],
+//               ['Region', company.region],
+//               ['Website', company.website || '—'],
+//             ].map(([l, v]) => (
+//               <div key={l}>
+//                 <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">{l}</p>
+//                 <p className="text-text-primary font-medium text-sm">{v}</p>
+//               </div>
+//             ))}
+//           </div>
+//           {company.description && (
+//             <div className="bg-surface rounded-xl p-4 mb-6">
+//               <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">About</p>
+//               <p className="text-text-primary text-sm">{company.description}</p>
+//             </div>
+//           )}
+//           <div className="flex gap-3">
+//             {!company.is_verified && company.is_active && (
+//               <button onClick={handleVerify} className="btn-secondary gap-2">
+//                 <CheckCircle size={16} /> Verify Account
+//               </button>
+//             )}
+//             {company.is_active
+//               ? <button onClick={handleDeactivate} className="bg-red-50 text-red-500 hover:bg-red-100 font-semibold px-5 py-2.5 rounded-xl transition-colors inline-flex items-center gap-2 text-sm">
+//                   <UserX size={16} /> Deactivate
+//                 </button>
+//               : <button onClick={handleActivate} className="btn-outline gap-2">
+//                   <CheckCircle size={16} /> Reactivate
+//                 </button>
+//             }
+//           </div>
+//         </div>
+
+//           <div className="card">
+//       <div className="p-6 border-b border-gray-50">
+//         <h3 className="section-title text-base">Booking History</h3>
+//       </div>
+//       <div className="divide-y divide-gray-50">
+//         {bookingsLoading ? (
+//           <p className="text-center text-text-secondary text-sm py-8">Loading...</p>
+//         ) : companyBookings.length === 0 ? (
+//           <p className="text-center text-text-secondary text-sm py-8">No bookings yet</p>
+//         ) : companyBookings.map(b => (
+//           <div key={b.booking_id} className="px-6 py-4 flex items-center justify-between">
+//             <div>
+//               <p className="font-semibold text-sm text-text-primary">{b.school_name}</p>
+//               <p className="text-xs text-text-secondary font-mono">
+//                 {new Date(b.start_date).toLocaleDateString()} → {new Date(b.end_date).toLocaleDateString()}
+//               </p>
+//             </div>
+//             <StatusBadge status={b.status} />
+//           </div>
+//       ))}
+//     </div>
+// </div>
+//       </div>
+//       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+//     </DashboardLayout>
+//   )
+// }
 
 // ─── Admin Schools ────────────────────────────────────────────────────────────
 export function AdminSchools() {
@@ -620,21 +998,54 @@ export function AdminSchools() {
                   <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Type</th>
                   <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Region</th>
                   <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Status</th>
+                  <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">AI Verdict</th>
                   <th className="text-left text-xs font-semibold text-text-secondary px-6 py-4 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filtered.length === 0
-                  ? <tr><td colSpan={5} className="text-center text-text-secondary text-sm py-10">No schools found</td></tr>
+                  ? <tr><td colSpan={6} className="text-center text-text-secondary text-sm py-10">No schools found</td></tr>
                   : filtered.map(s => (
                     <tr key={s.school_id} className="hover:bg-surface/50 transition-colors">
                       <td className="px-6 py-4">
                         <p className="font-semibold text-sm text-text-primary">{s.school_name}</p>
                         <p className="text-xs text-text-secondary font-mono">{s.email}</p>
                       </td>
-                      <td className="px-6 py-4"><span className="badge bg-blue-50 text-blue-700">{s.school_type || '—'}</span></td>
+                      <td className="px-6 py-4">
+                        <span className="badge bg-blue-50 text-blue-700">{s.school_type || '—'}</span>
+                      </td>
                       <td className="px-6 py-4 text-sm text-text-secondary">{s.region}</td>
                       <td className="px-6 py-4"><StatusBadge status={getStatus(s)} /></td>
+
+                      {/* ── AI Verdict Column ── */}
+                      <td className="px-6 py-4">
+                        {s.ai_decision ? (
+                          <div>
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                              s.ai_decision === 'AUTO_APPROVE'
+                                ? 'bg-green-100 text-green-700'
+                                : s.ai_decision === 'RECOMMEND_APPROVE'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                              {s.ai_decision === 'AUTO_APPROVE' ? '✓ Auto Approved'
+                                : s.ai_decision === 'RECOMMEND_APPROVE' ? '~ Recommend Approve'
+                                : '⚠ Manual Review'}
+                            </span>
+                            <p className="text-xs text-text-secondary mt-1">
+                              {s.ai_confidence}% confidence
+                            </p>
+                            {s.ai_reasoning && (
+                              <p className="text-xs text-text-secondary mt-1 max-w-xs italic line-clamp-2">
+                                {s.ai_reasoning}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-text-secondary">Not analysed</span>
+                        )}
+                      </td>
+
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
                           <Link to={`/admin/school/${s.school_id}`} className="text-xs py-1.5 px-3 rounded-lg bg-gray-50 hover:bg-gray-100 text-text-secondary transition-colors font-medium">
@@ -664,125 +1075,158 @@ export function AdminSchools() {
   )
 }
 
-export function AdminSchoolDetail() {
-  const [school, setSchool] = useState(null)
-  const [schoolBookings, setSchoolBookings] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [bookingsLoading, setBookingsLoading] = useState(true)
-  const [toast, setToast] = useState(null)
-  const schoolId = window.location.pathname.split('/').pop()
-  
-  useEffect(() => {
-    const fetchSchool = async () => {
-      try {
-        const res = await adminGetAllSchools()
-        const found = (res.data.schools || []).find(s => String(s.school_id) === String(schoolId))
-        setSchool(found || null)
-      } catch {
-        setToast({ message: 'Failed to load school', type: 'error' })
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchSchool()
-  }, [schoolId])
+// export function AdminSchoolDetail() {
+//   const [school, setSchool] = useState(null)
+//   const [schoolBookings, setSchoolBookings] = useState([])
+//   const [loading, setLoading] = useState(true)
+//   const [bookingsLoading, setBookingsLoading] = useState(true)
+//   const [toast, setToast] = useState(null)
+//   const schoolId = window.location.pathname.split('/').pop()
 
-  useEffect(() => {
-  const fetchBookings = async () => {
-    try {
-      const res = await adminGetSchoolBookings(schoolId)
-      setSchoolBookings(res.data || [])
-    } catch {
-      console.error('Failed to load school bookings')
-    } finally {
-      setBookingsLoading(false)
-    }
-  }
-  fetchBookings()
-}, [schoolId])
+//   useEffect(() => {
+//     const fetchSchool = async () => {
+//       try {
+//         const res = await adminGetAllSchools()
+//         const found = (res.data.schools || []).find(s => String(s.school_id) === String(schoolId))
+//         setSchool(found || null)
+//       } catch {
+//         setToast({ message: 'Failed to load school', type: 'error' })
+//       } finally {
+//         setLoading(false)
+//       }
+//     }
+//     fetchSchool()
+//   }, [schoolId])
 
-  const getStatus = (s) => {
-    if (!s.is_active) return 'deactivated'
-    if (!s.is_verified) return 'pending'
-    return 'verified'
-  }
+//   useEffect(() => {
+//     const fetchBookings = async () => {
+//       try {
+//         const res = await adminGetSchoolBookings(schoolId)
+//         setSchoolBookings(res.data || [])
+//       } catch {
+//         console.error('Failed to load school bookings')
+//       } finally {
+//         setBookingsLoading(false)
+//       }
+//     }
+//     fetchBookings()
+//   }, [schoolId])
 
-  const handleVerify = async () => {
-    try {
-      await adminVerifySchool(school.school_id)
-      setSchool(prev => ({ ...prev, is_verified: true }))
-      setToast({ message: 'School verified!', type: 'success' })
-    } catch {
-      setToast({ message: 'Failed to verify', type: 'error' })
-    }
-  }
+//   const getStatus = (s) => {
+//     if (!s.is_active) return 'deactivated'
+//     if (!s.is_verified) return 'pending'
+//     return 'verified'
+//   }
 
-  if (loading) return <DashboardLayout role="admin" userName="Admin" title="School Detail"><div className="text-center py-16 text-text-secondary text-sm">Loading...</div></DashboardLayout>
-  if (!school) return <DashboardLayout role="admin" userName="Admin" title="School Detail"><div className="text-center py-16 text-text-secondary text-sm">School not found</div></DashboardLayout>
+//   const handleVerify = async () => {
+//     try {
+//       await adminVerifySchool(school.school_id)
+//       setSchool(prev => ({ ...prev, is_verified: true }))
+//       setToast({ message: 'School verified!', type: 'success' })
+//     } catch {
+//       setToast({ message: 'Failed to verify', type: 'error' })
+//     }
+//   }
 
-  return (
-    <DashboardLayout role="admin" userName="Admin" title="School Detail">
-      <div className="max-w-3xl">
-        <div className="card p-8 mb-6">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-accent/20 flex items-center justify-center text-3xl">🏫</div>
-              <div>
-                <h2 className="font-display text-xl font-bold text-text-primary">{school.school_name}</h2>
-                <p className="text-text-secondary text-sm">{school.school_type} · {school.region}</p>
-              </div>
-            </div>
-            <StatusBadge status={getStatus(school)} />
-          </div>
-          <div className="grid grid-cols-2 gap-5 mb-6">
-            {[
-              ['Email', school.email],
-              ['Phone', school.phone_number],
-              ['Region', school.region],
-              ['Address', school.school_address || '—'],
-            ].map(([l, v]) => (
-              <div key={l}>
-                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">{l}</p>
-                <p className="text-text-primary font-medium text-sm">{v}</p>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-3">
-            {!school.is_verified && school.is_active && (
-              <button onClick={handleVerify} className="btn-secondary gap-2">
-                <CheckCircle size={16} /> Verify School
-              </button>
-            )}
-          </div>
-        </div>
+//   if (loading) return (
+//     <DashboardLayout role="admin" userName="Admin" title="School Detail">
+//       <div className="text-center py-16 text-text-secondary text-sm">Loading...</div>
+//     </DashboardLayout>
+//   )
 
-        <div className="card mt-6">
-        <div className="p-6 border-b border-gray-50">
-          <h3 className="section-title text-base">Booking History</h3>
-        </div>
-        <div className="divide-y divide-gray-50">
-          {bookingsLoading ? (
-            <p className="text-center text-text-secondary text-sm py-8">Loading...</p>
-          ) : schoolBookings.length === 0 ? (
-            <p className="text-center text-text-secondary text-sm py-8">No bookings yet</p>
-          ) : schoolBookings.map(b => (
-            <div key={b.booking_id} className="px-6 py-4 flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-sm text-text-primary">{b.company_name}</p>
-                <p className="text-xs text-text-secondary font-mono">
-                  {new Date(b.start_date).toLocaleDateString()} → {new Date(b.end_date).toLocaleDateString()}
-                </p>
-              </div>
-              <StatusBadge status={b.status} />
-            </div>
-          ))}
-        </div>
-      </div>
-      </div>
-      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
-    </DashboardLayout>
-  )
-}
+//   if (!school) return (
+//     <DashboardLayout role="admin" userName="Admin" title="School Detail">
+//       <div className="text-center py-16 text-text-secondary text-sm">School not found</div>
+//     </DashboardLayout>
+//   )
+
+//   return (
+//     <DashboardLayout role="admin" userName="Admin" title="School Detail">
+//       <div className="max-w-3xl">
+
+//         {/* ── Main Profile Card ── */}
+//         <div className="card p-8 mb-6">
+//           <div className="flex items-start justify-between mb-6">
+//             <div className="flex items-center gap-4">
+//               <div className="w-16 h-16 rounded-2xl bg-accent/20 flex items-center justify-center text-3xl">🏫</div>
+//               <div>
+//                 <h2 className="font-display text-xl font-bold text-text-primary">{school.school_name}</h2>
+//                 <p className="text-text-secondary text-sm">{school.school_type} · {school.region}</p>
+//               </div>
+//             </div>
+//             <StatusBadge status={getStatus(school)} />
+//           </div>
+
+//           <div className="grid grid-cols-2 gap-6 mb-6">
+//             {[
+//               ['Email', school.email],
+//               ['Phone', school.phone_number],
+//               ['Region', school.region],
+//               ['Address', school.school_address || '—'],
+//             ].map(([l, v]) => (
+//               <div key={l}>
+//                 <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">{l}</p>
+//                 <p className="text-text-primary font-medium text-sm">{v}</p>
+//               </div>
+//             ))}
+//           </div>
+
+//           {/* ── AI Verification Result ── */}
+//           {school.ai_decision && (
+//             <div className={`rounded-xl p-4 mb-6 border ${
+//               school.ai_decision === 'AUTO_APPROVE' ? 'bg-green-50 border-green-200' :
+//               school.ai_decision === 'RECOMMEND_APPROVE' ? 'bg-amber-50 border-amber-200' :
+//               'bg-red-50 border-red-200'
+//             }`}>
+//               <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${
+//                 school.ai_decision === 'AUTO_APPROVE' ? 'text-green-700' :
+//                 school.ai_decision === 'RECOMMEND_APPROVE' ? 'text-amber-700' :
+//                 'text-red-700'
+//               }`}>
+//                 🤖 AI Verification — {school.ai_confidence}% Confidence
+//               </p>
+//               <p className="text-sm text-text-primary">{school.ai_reasoning}</p>
+//             </div>
+//           )}
+
+//           <div className="flex gap-3">
+//             {!school.is_verified && school.is_active && (
+//               <button onClick={handleVerify} className="btn-secondary gap-2">
+//                 <CheckCircle size={16} /> Verify School
+//               </button>
+//             )}
+//           </div>
+//         </div>
+
+//         {/* ── Booking History Card ── */}
+//         <div className="card">
+//           <div className="p-6 border-b border-gray-50">
+//             <h3 className="section-title text-base">Booking History</h3>
+//           </div>
+//           <div className="divide-y divide-gray-50">
+//             {bookingsLoading ? (
+//               <p className="text-center text-text-secondary text-sm py-8">Loading...</p>
+//             ) : schoolBookings.length === 0 ? (
+//               <p className="text-center text-text-secondary text-sm py-8">No bookings yet</p>
+//             ) : schoolBookings.map(b => (
+//               <div key={b.booking_id} className="px-6 py-4 flex items-center justify-between">
+//                 <div>
+//                   <p className="font-semibold text-sm text-text-primary">{b.company_name}</p>
+//                   <p className="text-xs text-text-secondary font-mono">
+//                     {new Date(b.start_date).toLocaleDateString()} → {new Date(b.end_date).toLocaleDateString()}
+//                   </p>
+//                 </div>
+//                 <StatusBadge status={b.status} />
+//               </div>
+//             ))}
+//           </div>
+//         </div>
+
+//       </div>
+//       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+//     </DashboardLayout>
+//   )
+// }
 
 
 // ─── Admin Bookings ───────────────────────────────────────────────────────────
