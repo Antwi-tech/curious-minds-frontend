@@ -18,15 +18,18 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('role');
-      window.location.href = '/login';
+      const token = localStorage.getItem('token')
+      if (token) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('refresh_token')
+        localStorage.removeItem('user')
+        localStorage.removeItem('role')
+        window.location.href = '/login'
+      }
     }
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
-);
+)
 
 export const logout = () => {
   localStorage.removeItem('token');
@@ -42,6 +45,7 @@ export const loginCompany = (data) => API.post('/company/login', data);
 export const changeCompanyPassword = (id, data) => API.patch(`/company/change_password/${id}`, data);
 export const refreshCompanyToken = () => API.post('/company/token/refresh');
 export const updateCompanyProfile = (data) => API.patch('/company/profile', data);
+export const getSchoolsDirectory = () => API.get('/company/schools');
 
 // ─── AUTH - SCHOOL ────────────────────────────────────────
 export const registerSchool = (data) => API.post('/school/register', data);
@@ -67,6 +71,7 @@ export const adminVerifyCompany = (id) => API.patch(`/admin/companies/${id}/veri
 export const adminActivateCompany = (id) => API.patch(`/admin/companies/${id}/activate`);
 export const adminDeactivateCompany = (id) => API.patch(`/admin/companies/${id}/deactivate`);
 
+
 // ─── ADMIN - SCHOOL MANAGEMENT ────────────────────────────
 export const adminGetAllSchools = () => API.get('/admin/schools');
 export const adminVerifySchool = (id) => API.patch(`/admin/schools/${id}/verify`);
@@ -86,6 +91,11 @@ export const deleteCompanySlot = (id) => API.delete(`/company/slots/${id}`);
 export const getCompanyBookings = () => API.get('/company/bookings');
 export const approveBooking = (id) => API.patch(`/company/bookings/${id}/approve`);
 export const rejectBooking = (id) => API.patch(`/company/bookings/${id}/reject`);
+
+
+// ─── AI Features ──────────────────────────────────────────────────────────────
+export const generateCompanyDescription = (data) => API.post('/company/generate-description', data)
+export const generateSchoolDescription = (data) => API.post('/school/generate-description', data)
 
 // ─── SCHOOL - SLOTS & BOOKINGS ─────────────────────────────────────────
 export const getSchoolAvailableSlots = () => API.get('/school/slots');
